@@ -31,11 +31,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         
         if ($stmt->num_rows > 0) {
             $msg = "An account with this email already exists.";
+            $stmt->close(); // Close the statement here
         } else {
             // All checks passed, proceed with registration
-            $hashed_pw = password_hash($password, PASSWORD_DEFAULT);
-            $stmt->close();
+            $stmt->close(); // Close the first statement before creating a new one
 
+            $hashed_pw = password_hash($password, PASSWORD_DEFAULT);
+            
             $insert_stmt = $conn->prepare("INSERT INTO users (name, email, password, phone, role) VALUES (?, ?, ?, ?, ?)");
             $insert_stmt->bind_param("sssss", $name, $email, $hashed_pw, $phone, $role);
             
@@ -47,7 +49,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
             $insert_stmt->close();
         }
-        if (isset($stmt) && $stmt->num_rows <= 0) $stmt->close();
+        // REMOVED the problematic line from here
     }
     $conn->close();
 }
