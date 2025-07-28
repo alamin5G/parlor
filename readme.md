@@ -1,16 +1,75 @@
 ECHO is on.
 
-
 ### Functional Requirements
 
-* **Appointments:** Customers can book, reschedule, or cancel appointments.
-* **Services & Pricing:** Users can view available services (haircut, facial, bridal package) with prices.
-* **User Accounts:** Users can sign up, log in, and manage profiles.
-* **Admin Controls:** Admin can assign time slots to beauticians/stylists.
-* **Billing & Payments:** System generates bills, accepts  **cash payments only** , and provides receipts.
-* **Notifications:** Sends **email reminders only** for appointments.
-* **Admin Dashboard:** Manage services, employees, and appointments.
-* **Reviews:** Customers can leave ratings and reviews.
+**Parlor Management System – Functional Requirements**
+
+1. **User Registration & Login**
+
+   Users can sign up (email verification), log in, and manage their profiles.
+2. **Appointment Management**
+
+   Customers can book, reschedule, or cancel appointments.
+
+   Admin can assign time slots to beauticians/stylists.
+3. **Service Management**
+
+   Customers can view available services with pricing (e.g., haircut, facial, bridal package, skincare, spa, nail).
+
+   Admin can manage (add, edit, remove) the list of services.
+4. **Notifications**
+
+   The system sends **email reminders** to customers for appointments.
+5. **Billing & Payments**
+
+   The system generates a bill for each completed appointment.
+
+   Customers can pay using **cash** at the parlor and receive a PDF receipt via email.
+
+   Customers can pay using **bKash** (manual transaction):
+
+   – Instructions and bKash payment number are shown during payment.
+
+   – Customers must enter the bKash transaction ID when submitting payment.
+
+   – Payment is marked as pending until **admin confirms** in the backend.
+
+   – Upon admin approval, the customer receives a PDF receipt via email.
+6. **Admin Dashboard**
+
+   Admin can manage all services, employees (beauticians/stylists), and appointments.
+
+   Admin can approve/confirm bKash payments.
+
+   Admin can view reports, billing information, and all user activity.
+7. **Employee/Beautician Dashboard**
+
+   Beauticians/stylists can log in and view their assigned schedule/appointments.
+8. **Ratings & Reviews**
+
+   Customers can leave ratings and reviews for their appointments/services.
+
+
+## **Checklist Version (for SRS, use as a table or bullet points)**
+
+---
+
+**Functional Requirements Checklist**
+
+| #  | Requirement                                                                                  | Implemented | Notes |
+| -- | -------------------------------------------------------------------------------------------- | ----------- | ----- |
+| 1  | Users can sign up, log in, and manage their profiles                                         | [ ]         |       |
+| 2  | Customers can book, reschedule, or cancel appointments                                       | [ ]         |       |
+| 3  | Admin can assign time slots to beauticians/stylists                                          | [ ]         |       |
+| 4  | Customers can view available services with pricing                                           | [ ]         |       |
+| 5  | Admin can manage the list of services                                                        | [ ]         |       |
+| 6  | System sends email reminders for appointments                                                | [ ]         |       |
+| 7  | System generates a bill for each completed appointment                                       | [ ]         |       |
+| 8  | Cash payments: customers receive PDF receipt by email                                        | [ ]         |       |
+| 9  | bKash payments (manual): customers enter transaction ID, admin approves, PDF receipt emailed | [ ]         |       |
+| 10 | Admin dashboard for services, employees, appointments, payment approval, reports             | [ ]         |       |
+| 11 | Beauticians can view their assigned schedules/appointments                                   | [ ]         |       |
+| 12 | Customers can leave ratings and reviews                                                      | [ ]         |       |
 
 ### Non-Functional Requirements
 
@@ -27,7 +86,6 @@ ECHO is on.
 * Online payment gateways (bKash, Nagad, etc.) [optional].
 * Barcode-based check-in.
 * Multi-branch support.
-
 
 ### **users**
 
@@ -136,8 +194,6 @@ ECHO is on.
 | employee_id             | INT  | NOT NULL, FK → employees(id)    | Employee            |
 | service_id              | INT  | NOT NULL, FK → services(id)     | Service assigned    |
 | unique_employee_service |      | UNIQUE (employee_id, service_id) | Ensures unique pair |
-
-
 
 **users**
 
