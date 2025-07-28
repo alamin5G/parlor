@@ -1,4 +1,5 @@
 <?php
+
 session_start();
 require_once 'db_connect.php';
 
@@ -18,35 +19,43 @@ if ($conn) {
     }
 }
 
-
 $msg = '';
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $email = trim($_POST['email']);
     $password = $_POST['password'];
     
     if ($conn) {
-        $stmt = $conn->prepare("SELECT id, name, password, role FROM users WHERE email=?");
+        // Updated query to include is_verified field
+        $stmt = $conn->prepare("SELECT id, name, password, role, is_verified FROM users WHERE email=?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $stmt->store_result();
         
         if ($stmt->num_rows == 1) {
-            $stmt->bind_result($id, $name, $hashed_pw, $role);
+            // Bind is_verified to a variable
+            $stmt->bind_result($id, $name, $hashed_pw, $role, $is_verified);
             $stmt->fetch();
+            
             if (password_verify($password, $hashed_pw)) {
-                $_SESSION['user_id'] = $id;
-                $_SESSION['name'] = $name;
-                $_SESSION['role'] = $role;
-                
-                // Redirect based on role
-                if ($role == 'admin') {
-                    header('Location: admin/dashboard.php');
-                } elseif ($role == 'beautician') {
-                    header('Location: employee/dashboard.php');
+                // Check if the user's email is verified
+                if ($is_verified == 0) {
+                    $msg = "Please verify your email address before logging in. Check your inbox for the verification link.";
                 } else {
-                    header('Location: user/dashboard.php');
+                    // Verified user - proceed with login
+                    $_SESSION['user_id'] = $id;
+                    $_SESSION['name'] = $name;
+                    $_SESSION['role'] = $role;
+                    
+                    // Redirect based on role
+                    if ($role == 'admin') {
+                        header('Location: admin/dashboard.php');
+                    } elseif ($role == 'beautician') {
+                        header('Location: employee/dashboard.php');
+                    } else {
+                        header('Location: user/dashboard.php');
+                    }
+                    exit;
                 }
-                exit;
             } else {
                 $msg = "Invalid email or password.";
             }

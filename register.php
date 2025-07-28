@@ -2,6 +2,12 @@
 session_start();
 require_once 'db_connect.php';
 
+// Load Composer's autoloader
+require 'vendor/autoload.php';
+
+// Include email functions
+require_once 'includes/email_functions.php';
+
 $msg = '';
 $msg_type = 'danger'; // Default to error type
 
@@ -38,22 +44,71 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $hashed_pw = password_hash($password, PASSWORD_DEFAULT);
             
-            $insert_stmt = $conn->prepare("INSERT INTO users (name, email, password, phone, role) VALUES (?, ?, ?, ?, ?)");
-            $insert_stmt->bind_param("sssss", $name, $email, $hashed_pw, $phone, $role);
+            // Generate verification token
+            $verify_token = bin2hex(random_bytes(32));
+            
+            $insert_stmt = $conn->prepare("INSERT INTO users (name, email, password, phone, role, verify_token, is_verified) VALUES (?, ?, ?, ?, ?, ?, 0)");
+            $insert_stmt->bind_param("ssssss", $name, $email, $hashed_pw, $phone, $role, $verify_token);
             
             if ($insert_stmt->execute()) {
-                $msg = "Registration successful! You can now log in.";
-                $msg_type = 'success';
+                // Create verification link
+                $verification_link = "http://" . $_SERVER['HTTP_HOST'] . "/parlor/verify.php?token=" . $verify_token;
+                
+                // Prepare email content
+                $email_subject = "Verify your Aura Salon & Spa account";
+                $email_body = "<html>
+                <head>
+                <title>Verify Your Email</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                    h2 { color: #6a11cb; }
+                    .btn { display: inline-block; padding: 10px 20px; background: linear-gradient(to right, #6a11cb, #2575fc); 
+                           color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
+                    .footer { margin-top: 30px; font-size: 0.8em; color: #666; }
+                </style>
+                </head>
+                <body>
+                <div class='container'>
+                    <h2>Welcome to Aura Salon & Spa!</h2>
+                    <p>Hello $name,</p>
+                    <p>Thank you for registering. To complete your registration and verify your email address, please click the button below:</p>
+                    <p style='text-align: center;'><a href='$verification_link' class='btn'>Verify Your Email</a></p>
+                    <p>Or copy and paste this URL into your browser:</p>
+                    <p>$verification_link</p>
+                    <p>This link will expire in 24 hours.</p>
+                    <div class='footer'>
+                        <p>Regards,<br>Aura Salon & Spa Team</p>
+                        <p>If you didn't create an account, you can safely ignore this email.</p>
+                    </div>
+                </div>
+                </body>
+                </html>
+                ";
+                
+                 // Send email using our custom function
+                $email_result = send_email($email, $name, $email_subject, $email_body);
+                
+                if ($email_result['success']) {
+                    $msg = "Registration successful! Please check your email to verify your account.";
+                    $msg_type = 'success';
+                } else {
+                    $msg = "Registration successful but could not send verification email. Please contact support.";
+                    $msg_type = 'warning';
+                    
+                    // Log the error (for admin/developer)
+                    error_log("Email sending failed: " . $email_result['message']);
+                }
             } else {
                 $msg = "Registration failed. Please try again later.";
             }
             $insert_stmt->close();
         }
-        // REMOVED the problematic line from here
     }
     $conn->close();
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
