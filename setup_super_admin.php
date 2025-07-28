@@ -1,5 +1,5 @@
 <?php
-require_once 'db_connect.php';
+require_once 'includes/db_connect.php';
 
 // Check if super admin exists
 if ($conn) {
@@ -35,9 +35,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $msg = "Passwords do not match.";
     } else {
         $hashed_pw = password_hash($password, PASSWORD_DEFAULT);
-        $stmt = $conn->prepare("INSERT INTO users (name, email, password, phone, role) VALUES (?, ?, ?, ?, 'admin')");
-        $stmt->bind_param("ssss", $name, $email, $hashed_pw, $phone);
         
+        $isVerified = 1; // Super Admin is always verified
+        $stmt = $conn->prepare("INSERT INTO users (name, email, password, phone, role, is_verified) VALUES (?, ?, ?, ?, 'admin', ?)");
+        $stmt->bind_param("ssssi", $name, $email, $hashed_pw, $phone, $isVerified);
+
         if ($stmt->execute()) {
             // Success: Redirect to login with a success message.
             // The check at the top of this file will now prevent access.
