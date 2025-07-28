@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db_connect.php';
+require_once 'includes/db_connect.php';
 
 // Load Composer's autoloader
 require 'vendor/autoload.php';
@@ -42,20 +42,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             // All checks passed, proceed with registration
             $stmt->close(); // Close the first statement before creating a new one
 
-            $hashed_pw = password_hash($password, PASSWORD_DEFAULT);
             
-            // Generate verification token
+            $hashed_pw = password_hash($password, PASSWORD_DEFAULT);
             $verify_token = bin2hex(random_bytes(32));
             
-            $insert_stmt = $conn->prepare("INSERT INTO users (name, email, password, phone, role, verify_token, is_verified) VALUES (?, ?, ?, ?, ?, ?, 0)");
+            $insert_stmt = $conn->prepare("INSERT INTO users (name, email, password, phone, role, verify_token) VALUES (?, ?, ?, ?, ?, ?)");
             $insert_stmt->bind_param("ssssss", $name, $email, $hashed_pw, $phone, $role, $verify_token);
             
             if ($insert_stmt->execute()) {
-                // Create verification link
+                // Prepare and send the first verification email
                 $verification_link = "http://" . $_SERVER['HTTP_HOST'] . "/parlor/verify.php?token=" . $verify_token;
-                
-                // Prepare email content
                 $email_subject = "Verify your Aura Salon & Spa account";
+               
+                // Prepare email content
+                $email_subject = "Verify your Labonno Glamour World account";
                 $email_body = "<html>
                 <head>
                 <title>Verify Your Email</title>
@@ -63,14 +63,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
                     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
                     h2 { color: #6a11cb; }
-                    .btn { display: inline-block; padding: 10px 20px; background: linear-gradient(to right, #6a11cb, #2575fc); 
+                    .btn { display: inline-block; padding: 10px 20px; background: linear-gradient(to right, #6a11cb, #f2f7ffff); 
                            color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
                     .footer { margin-top: 30px; font-size: 0.8em; color: #666; }
                 </style>
                 </head>
                 <body>
                 <div class='container'>
-                    <h2>Welcome to Aura Salon & Spa!</h2>
+                    <h2>Welcome to Labonno Glamour World!</h2>
                     <p>Hello $name,</p>
                     <p>Thank you for registering. To complete your registration and verify your email address, please click the button below:</p>
                     <p style='text-align: center;'><a href='$verification_link' class='btn'>Verify Your Email</a></p>
@@ -78,7 +78,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <p>$verification_link</p>
                     <p>This link will expire in 24 hours.</p>
                     <div class='footer'>
-                        <p>Regards,<br>Aura Salon & Spa Team</p>
+                        <p>Regards,<br>Labonno Glamour World Team</p>
                         <p>If you didn't create an account, you can safely ignore this email.</p>
                     </div>
                 </div>
@@ -87,18 +87,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ";
                 
                  // Send email using our custom function
-                $email_result = send_email($email, $name, $email_subject, $email_body);
-                
+                 $email_result = send_email($email, $name, $email_subject, $email_body);
+
                 if ($email_result['success']) {
-                    $msg = "Registration successful! Please check your email to verify your account.";
-                    $msg_type = 'success';
+                    // Store email in session and redirect to the verification notice page
+                    $_SESSION['registration_email'] = $email;
+                    header("Location: resend-verification.php");
+                    exit();
                 } else {
-                    $msg = "Registration successful but could not send verification email. Please contact support.";
-                    $msg_type = 'warning';
-                    
-                    // Log the error (for admin/developer)
-                    error_log("Email sending failed: " . $email_result['message']);
+                    $msg = "Registration successful, but we could not send a verification email. Please try again later.";
+                    // Optionally log the email error
+                    error_log("Email sending failed for new user {$email}: " . $email_result['message']);
                 }
+
             } else {
                 $msg = "Registration failed. Please try again later.";
             }
@@ -112,7 +113,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Register - Aura Salon & Spa</title>
+    <title>Register - Labonno Glamour World</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
@@ -254,7 +255,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         <!-- Branding Section -->
         <div class="register-branding-section">
             <div class="logo"><i class="fa-solid fa-spa"></i></div>
-            <h1 class="mb-3">Join Aura</h1>
+            <h1 class="mb-3">Join Labonno Glamour World</h1>
             <p>Create your account in seconds to unlock exclusive access to our services and easy online booking.</p>
         </div>
 

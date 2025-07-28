@@ -2,6 +2,13 @@ ECHO is on.
 
 ### Labonno Glamour World
 
+Technical Stack
+
+* **Backend:** PHP
+* **Database:** MySQL / MariaDB
+* **Frontend:** HTML, CSS, Bootstrap 5
+* **Dependencies:** PHPMailer (managed via Composer)
+
 ### Functional Requirements
 
 **Parlor Management System – Functional Requirements**
@@ -51,7 +58,6 @@ ECHO is on.
 
    Customers can leave ratings and reviews for their appointments/services.
 
-
 ## **Checklist Version (for SRS, use as a table or bullet points)**
 
 ---
@@ -91,15 +97,17 @@ ECHO is on.
 
 ### **users**
 
-| Column Name | Type                                    | Constraints               | Description           |
-| ----------- | --------------------------------------- | ------------------------- | --------------------- |
-| id          | INT                                     | PK, AUTO_INCREMENT        | User ID               |
-| name        | VARCHAR(100)                            | NOT NULL                  | User’s full name     |
-| email       | VARCHAR(100)                            | NOT NULL, UNIQUE          | User’s email         |
-| password    | VARCHAR(255)                            | NOT NULL                  | Password (hashed)     |
-| phone       | VARCHAR(20)                             |                           | Phone number          |
-| role        | ENUM('customer', 'admin', 'beautician') | NOT NULL                  | User type/role        |
-| created_at  | DATETIME                                | DEFAULT CURRENT_TIMESTAMP | Account creation date |
+| Column Name                | Type                                    | Constraints                       | Description                            |
+| :------------------------- | :-------------------------------------- | :-------------------------------- | :------------------------------------- |
+| id                         | INT                                     | PK, AUTO_INCREMENT                | User ID                                |
+| name                       | VARCHAR(100)                            | NOT NULL                          | User’s full name                      |
+| email                      | VARCHAR(100)                            | NOT NULL, UNIQUE                  | User’s email                          |
+| password                   | VARCHAR(255)                            | NOT NULL                          | Password (hashed)                      |
+| phone                      | VARCHAR(20)                             |                                   | Phone number                           |
+| role                       | ENUM('customer', 'admin', 'beautician') | NOT NULL                          | User type/role                         |
+| **`is_verified`**  | **`TINYINT(1)`**                | **`NOT NULL, DEFAULT 0`** | **`0=No, 1=Yes`**              |
+| **`verify_token`** | **`VARCHAR(255)`**              | **`NULL`**                | **`Email verification token`** |
+| created_at                 | DATETIME                                | DEFAULT CURRENT_TIMESTAMP         | Account creation date                  |
 
 ---
 
@@ -232,3 +240,26 @@ Logs email reminders sent to customers for their appointments, including send st
 **employee_services**
 
 Maps which services each employee can perform (many-to-many relationship). Ensures customers are only assigned to employees qualified for the selected service.
+
+## **Checklist Version (for SRS, use as a table or bullet points)**
+
+---
+
+**Functional Requirements Checklist**
+
+| #  | Requirement                                                                                  | Status         | Notes                                                    |
+| -- | -------------------------------------------------------------------------------------------- | -------------- | -------------------------------------------------------- |
+| 1  | Users can sign up, log in, and manage their profiles                                         | ◐ In Progress | Sign up & Login are done. Profile management is pending. |
+| 2  | Customers can book, reschedule, or cancel appointments                                       | ○ To Do       |                                                          |
+| 3  | Admin can assign time slots to beauticians/stylists                                          | ○ To Do       |                                                          |
+| 4  | Customers can view available services with pricing                                           | ○ To Do       |                                                          |
+| 5  | Admin can manage the list of services                                                        | ○ To Do       |                                                          |
+| 6  | System sends email reminders for appointments                                                | ○ To Do       |                                                          |
+| 7  | System generates a bill for each completed appointment                                       | ○ To Do       |                                                          |
+| 8  | Cash payments: customers receive PDF receipt by email                                        | ○ To Do       |                                                          |
+| 9  | bKash payments (manual): customers enter transaction ID, admin approves, PDF receipt emailed | ○ To Do       |                                                          |
+| 10 | Admin dashboard for services, employees, appointments, payment approval, reports             | ○ To Do       |                                                          |
+| 11 | Beauticians can view their assigned schedules/appointments                                   | ○ To Do       |                                                          |
+| 12 | Customers can leave ratings and reviews                                                      | ○ To Do       |                                                          |
+
+... existing

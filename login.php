@@ -1,7 +1,7 @@
 <?php
 
 session_start();
-require_once 'db_connect.php';
+require_once 'includes/db_connect.php';
 
 // Lock endpoints if no super admin
 if ($conn) {
@@ -36,12 +36,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $stmt->bind_result($id, $name, $hashed_pw, $role, $is_verified);
             $stmt->fetch();
             
+            // Check password first
             if (password_verify($password, $hashed_pw)) {
-                // Check if the user's email is verified
+                
+                // ADD THIS CHECK: Ensure account is verified
                 if ($is_verified == 0) {
-                    $msg = "Please verify your email address before logging in. Check your inbox for the verification link.";
+                    // User is not verified, set session for the resend page
+                    $_SESSION['registration_email'] = $email;
+                    $msg = "Your account is not verified. Please check your email or <a href='resend-verification.php'>resend the verification link</a>.";
                 } else {
-                    // Verified user - proceed with login
+                    // User is verified, proceed with login
                     $_SESSION['user_id'] = $id;
                     $_SESSION['name'] = $name;
                     $_SESSION['role'] = $role;
@@ -60,6 +64,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $msg = "Invalid email or password.";
             }
         } else {
+            // This else corresponds to if ($stmt->num_rows == 1)
             $msg = "Invalid email or password.";
         }
         $stmt->close();
@@ -69,10 +74,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 ?>
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Login - Aura Salon & Spa</title>
+    <title>Login - Labonno Glamour World</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
@@ -199,10 +205,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div class="login-card">
         
         <!-- Branding Section -->
-        <div class="login-branding-section">
+       <div class="login-branding-section">
             <div class="logo"><i class="fa-solid fa-spa"></i></div>
             <h1 class="mb-3">Welcome Back</h1>
-            <p>Sign in to access your personalized dashboard and manage your beauty journey with Aura Salon & Spa.</p>
+            <p>Sign in to access your personalized dashboard and manage your beauty journey with Labonno Glamour World.</p>
         </div>
 
         <!-- Form Section -->

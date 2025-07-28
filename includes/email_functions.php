@@ -16,8 +16,13 @@ use PHPMailer\PHPMailer\Exception;
  */
 function send_email($to_email, $to_name, $subject, $body, $alt_body = '') {
     // Load SMTP configuration
-    $smtp_config = require_once __DIR__ . '/../config/smtp_config.php';
-    
+    $smtp_config = require __DIR__ . '/email_conf.php';
+    if (!$smtp_config) {
+        return [
+            'success' => false,
+            'message' => 'SMTP configuration could not be loaded.'
+        ];
+    }    
     // Create a new PHPMailer instance
     $mail = new PHPMailer(true);
     
