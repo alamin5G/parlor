@@ -74,10 +74,13 @@ $result = $conn->query($query);
                                         <a href="service_edit.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="services.php?delete=<?php echo $row['id']; ?>" class="btn btn-sm btn-danger" 
-                                           onclick="return confirm('Are you sure you want to delete this service?')">
+                                        <button type="button" class="btn btn-sm btn-danger" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteServiceModal" 
+                                                data-id="<?php echo $row['id']; ?>"
+                                                data-name="<?php echo htmlspecialchars($row['name']); ?>">
                                             <i class="fas fa-trash"></i>
-                                        </a>
+                                        </button>
                                     </td>
                                 </tr>
                             <?php endwhile; ?>
@@ -93,4 +96,46 @@ $result = $conn->query($query);
     </div>
 </div>
 
+
+<!-- DELETE SERVICE MODAL -->
+<div class="modal fade" id="deleteServiceModal" tabindex="-1" aria-labelledby="deleteServiceModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteServiceModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the service: <strong id="serviceNameToDelete"></strong>?
+        <p class="text-danger mt-2">This action cannot be undone. Please ensure this service is not associated with any appointments before proceeding.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <a href="#" id="confirmDeleteButton" class="btn btn-danger">Delete Service</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var deleteServiceModal = document.getElementById('deleteServiceModal');
+    deleteServiceModal.addEventListener('show.bs.modal', function (event) {
+        // Button that triggered the modal
+        var button = event.relatedTarget;
+        
+        // Extract info from data-* attributes
+        var serviceId = button.getAttribute('data-id');
+        var serviceName = button.getAttribute('data-name');
+        
+        // Update the modal's content
+        var modalBodyName = deleteServiceModal.querySelector('#serviceNameToDelete');
+        var confirmDeleteButton = deleteServiceModal.querySelector('#confirmDeleteButton');
+        
+        modalBodyName.textContent = serviceName;
+        confirmDeleteButton.href = 'services.php?delete=' + serviceId;
+    });
+});
+</script>
 <?php require_once '../include/footer.php'; ?>

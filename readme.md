@@ -8,6 +8,7 @@ Technical Stack
 * **Database:** MySQL / MariaDB
 * **Frontend:** HTML, CSS, Bootstrap 5
 * **Dependencies:** PHPMailer (managed via Composer)
+* https://getcomposer.org/download/
 
 ### Functional Requirements
 

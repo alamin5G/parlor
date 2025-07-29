@@ -101,10 +101,14 @@ $result = $conn->query($query);
                                         <a href="edit_employee.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="employees.php?delete=<?php echo $row['id']; ?>" class="btn btn-sm btn-danger" 
-                                           onclick="return confirm('Are you sure you want to delete this employee?')">
+                                         <!-- MODIFIED DELETE BUTTON -->
+                                        <button type="button" class="btn btn-sm btn-danger" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#deleteEmployeeModal" 
+                                                data-id="<?php echo $row['id']; ?>"
+                                                data-name="<?php echo htmlspecialchars($row['name']); ?>">
                                             <i class="fas fa-trash"></i>
-                                        </a>
+                                        </button>
                                     </td>
                                 </tr>
                             <?php endwhile; ?>
@@ -120,4 +124,44 @@ $result = $conn->query($query);
     </div>
 </div>
 
+<!-- DELETE EMPLOYEE MODAL -->
+<div class="modal fade" id="deleteEmployeeModal" tabindex="-1" aria-labelledby="deleteEmployeeModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteEmployeeModalLabel"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Deletion</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete the employee: <strong id="employeeNameToDelete"></strong>?
+        <p class="text-danger mt-2">This action is irreversible and will permanently remove the employee's record and their user account.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <a href="#" id="confirmDeleteButton" class="btn btn-danger">Delete Employee</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var deleteEmployeeModal = document.getElementById('deleteEmployeeModal');
+    deleteEmployeeModal.addEventListener('show.bs.modal', function (event) {
+        // Button that triggered the modal
+        var button = event.relatedTarget;
+        
+        // Extract info from data-* attributes
+        var employeeId = button.getAttribute('data-id');
+        var employeeName = button.getAttribute('data-name');
+        
+        // Update the modal's content.
+        var modalBodyName = deleteEmployeeModal.querySelector('#employeeNameToDelete');
+        var confirmDeleteButton = deleteEmployeeModal.querySelector('#confirmDeleteButton');
+        
+        modalBodyName.textContent = employeeName;
+        confirmDeleteButton.href = 'employees.php?delete=' + employeeId;
+    });
+});
+</script>
 <?php require_once 'include/footer.php'; ?>

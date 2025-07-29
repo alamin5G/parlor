@@ -1,6 +1,6 @@
 
 <?php
-// index.php - Parlor Management System Landing Page
+session_start();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -184,12 +184,38 @@
                 <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
                 <li class="nav-item"><a class="nav-link" href="#roles">For Everyone</a></li>
                 <li class="nav-item"><a class="nav-link" href="#services">Services</a></li>
-                <li class="nav-item ms-lg-3">
-                    <a href="login.php" class="btn btn-outline-primary rounded-pill px-4 me-2">Login</a>
-                </li>
-                <li class="nav-item">
-                    <a href="register.php" class="btn btn-gradient">Register</a>
-                </li>
+                
+                <?php if (isset($_SESSION['user_id'])): ?>
+                    <?php
+                        // Determine the correct dashboard link based on the user's role
+                        $dashboard_link = '#'; // Default fallback
+                        if ($_SESSION['role'] === 'admin') {
+                            $dashboard_link = 'admin/dashboard.php';
+                        } elseif ($_SESSION['role'] === 'beautician') {
+                            $dashboard_link = 'employee/dashboard.php';
+                        } elseif ($_SESSION['role'] === 'customer') {
+                            $dashboard_link = 'user/dashboard.php';
+                        }
+                    ?>
+                    <li class="nav-item dropdown ms-lg-3">
+                        <a class="nav-link dropdown-toggle fw-bold" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-user-circle me-1"></i> Welcome, <?php echo htmlspecialchars($_SESSION['name']); ?>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                            <li><a class="dropdown-item" href="<?php echo $dashboard_link; ?>"><i class="fa-solid fa-tachometer-alt fa-fw me-2"></i>My Dashboard</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="logout.php"><i class="fa-solid fa-sign-out-alt fa-fw me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                <?php else: ?>
+                    <!-- Show Login and Register buttons if the user is not logged in -->
+                    <li class="nav-item ms-lg-3">
+                        <a href="login.php" class="btn btn-outline-primary rounded-pill px-4 me-2">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="register.php" class="btn btn-gradient">Register</a>
+                    </li>
+                <?php endif; ?>
             </ul>
         </div>
     </div>
