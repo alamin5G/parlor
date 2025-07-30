@@ -24,7 +24,7 @@ $nav_sections = [
     'users' => ['employees.php', 'add_employee.php', 'edit_employee.php', 'view_employee.php', 'customers.php', 'view_user.php'],
     'management' => ['services.php', 'service_add.php', 'service_edit.php'],
     'financials' => ['bills.php', 'view_bill.php', 'reports.php'],
-    'profile' => ['profile.php'] // Added profile page
+    'profile' => ['profile.php']
 ];
 
 function is_section_active($section, $current_page, $sections) {
@@ -185,7 +185,7 @@ function is_section_active($section, $current_page, $sections) {
                 </a>
                 <ul class="collapse list-unstyled <?php if(is_section_active('financials', $current_page, $nav_sections)) echo 'show'; ?>" id="financialsSubmenu">
                     <li><a class="dropdown-item <?php if($current_page == 'bills.php' || $current_page == 'view_bill.php') echo 'active'; ?>" href="/parlor/admin/bills.php">Bills</a></li>
-                    <li><a class="dropdown-item <?php if($current_page == 'reports.php') echo 'active'; ?>" href="#">Reports</a></li>
+                    <li><a class="dropdown-item <?php if($current_page == 'reports.php') echo 'active'; ?>" href="/parlor/admin/reports.php">Reports</a></li>
                 </ul>
             </li>
         </ul>
@@ -215,3 +215,5 @@ function is_section_active($section, $current_page, $sections) {
             </div>
         </nav>
         <div class="content-wrapper">
+            
+        
