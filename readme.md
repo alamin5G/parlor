@@ -2,13 +2,17 @@ ECHO is on.
 
 ### Labonno Glamour World
 
-Technical Stack
+A comprehensive parlor management system designed to streamline appointments, billing, and business analytics.
+
+### Technical Stack
 
 * **Backend:** PHP
 * **Database:** MySQL / MariaDB
-* **Frontend:** HTML, CSS, Bootstrap 5
-* **Dependencies:** PHPMailer (managed via Composer)
-* https://getcomposer.org/download/
+* **Frontend:** HTML, CSS, Bootstrap 5, JavaScript, jQuery, Chart.js
+* **Dependencies:** PHPMailer, FPDF (managed via Composer)
+* **Composer:** [https://getcomposer.org/download/](https://getcomposer.org/download/)
+
+---
 
 ### Functional Requirements
 
@@ -98,17 +102,19 @@ Technical Stack
 
 ### **users**
 
-| Column Name                | Type                                    | Constraints                       | Description                            |
-| :------------------------- | :-------------------------------------- | :-------------------------------- | :------------------------------------- |
-| id                         | INT                                     | PK, AUTO_INCREMENT                | User ID                                |
-| name                       | VARCHAR(100)                            | NOT NULL                          | User’s full name                      |
-| email                      | VARCHAR(100)                            | NOT NULL, UNIQUE                  | User’s email                          |
-| password                   | VARCHAR(255)                            | NOT NULL                          | Password (hashed)                      |
-| phone                      | VARCHAR(20)                             |                                   | Phone number                           |
-| role                       | ENUM('customer', 'admin', 'beautician') | NOT NULL                          | User type/role                         |
-| **`is_verified`**  | **`TINYINT(1)`**                | **`NOT NULL, DEFAULT 0`** | **`0=No, 1=Yes`**              |
-| **`verify_token`** | **`VARCHAR(255)`**              | **`NULL`**                | **`Email verification token`** |
-| created_at                 | DATETIME                                | DEFAULT CURRENT_TIMESTAMP         | Account creation date                  |
+| Column Name                    | Type                                    | Constraints                       | Description                            |
+| :----------------------------- | :-------------------------------------- | :-------------------------------- | :------------------------------------- |
+| id                             | INT                                     | PK, AUTO_INCREMENT                | User ID                                |
+| name                           | VARCHAR(100)                            | NOT NULL                          | User’s full name                      |
+| email                          | VARCHAR(100)                            | NOT NULL, UNIQUE                  | User’s email                          |
+| password                       | VARCHAR(255)                            | NOT NULL                          | Password (hashed)                      |
+| phone                          | VARCHAR(20)                             |                                   | Phone number                           |
+| role                           | ENUM('customer', 'admin', 'beautician') | NOT NULL                          | User type/role                         |
+| **`is_verified`**      | **`TINYINT(1)`**                | **`NOT NULL, DEFAULT 0`** | **`0=No, 1=Yes`**              |
+| **`verify_token`**     | **`VARCHAR(255)`**              | **`NULL`**                | **`Email verification token`** |
+| created_at                     | DATETIME                                | DEFAULT CURRENT_TIMESTAMP         | Account creation date                  |
+| profile_update_code            | varchar(16)                             | NULL                              | OTP CODE                               |
+| profile_update_code_expires_at | datetime                                | NULL                              | KEEP THE OTP TIME                      |
 
 ---
 
@@ -246,21 +252,17 @@ Maps which services each employee can perform (many-to-many relationship). Ensur
 
 ---
 
-**Functional Requirements Checklist**
-
-| #  | Requirement                                                                                  | Status         | Notes                                                    |
-| -- | -------------------------------------------------------------------------------------------- | -------------- | -------------------------------------------------------- |
-| 1  | Users can sign up, log in, and manage their profiles                                         | ◐ In Progress | Sign up & Login are done. Profile management is pending. |
-| 2  | Customers can book, reschedule, or cancel appointments                                       | ○ To Do       |                                                          |
-| 3  | Admin can assign time slots to beauticians/stylists                                          | ○ To Do       |                                                          |
-| 4  | Customers can view available services with pricing                                           | ○ To Do       |                                                          |
-| 5  | Admin can manage the list of services                                                        | ○ To Do       |                                                          |
-| 6  | System sends email reminders for appointments                                                | ○ To Do       |                                                          |
-| 7  | System generates a bill for each completed appointment                                       | ○ To Do       |                                                          |
-| 8  | Cash payments: customers receive PDF receipt by email                                        | ○ To Do       |                                                          |
-| 9  | bKash payments (manual): customers enter transaction ID, admin approves, PDF receipt emailed | ○ To Do       |                                                          |
-| 10 | Admin dashboard for services, employees, appointments, payment approval, reports             | ○ To Do       |                                                          |
-| 11 | Beauticians can view their assigned schedules/appointments                                   | ○ To Do       |                                                          |
-| 12 | Customers can leave ratings and reviews                                                      | ○ To Do       |                                                          |
-
-... existing
+| #  | Requirement                                                                                  | Status         | Notes                                                                                             |
+| -- | -------------------------------------------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------- |
+| 1  | Users can sign up, log in, and manage their profiles                                         | ✔️ Done      | Includes email verification, profile editing, and secure password changes.                        |
+| 2  | Customers can book, reschedule, or cancel appointments                                       | ○ To Do       | The customer-facing interface for appointment management is not yet built.                        |
+| 3  | Admin can assign time slots to beauticians/stylists                                          | ✔️ Done      | Implemented as part of the "Create Appointment" feature in the admin panel.                       |
+| 4  | Customers can view available services with pricing                                           | ○ To Do       | The public-facing services page is not yet built.                                                 |
+| 5  | Admin can manage the list of services (CRUD)                                                 | ✔️ Done      | Admin can add, edit, and delete services. Includes a safety check for deleting used services.     |
+| 6  | System sends email reminders for appointments                                                | ○ To Do       | The database table and email function exist, but the trigger/cron job has not been implemented.   |
+| 7  | System generates a bill for each completed appointment                                       | ✔️ Done      | Bills are generated from completed appointments and can be viewed in a dedicated section.         |
+| 8  | Cash payments: customers receive PDF receipt by email                                        | ◐ In Progress | A printable PDF invoice is generated, but the functionality to email it automatically is pending. |
+| 9  | bKash payments (manual): customers enter transaction ID, admin approves, PDF receipt emailed | ○ To Do       | This payment method has not been implemented yet.                                                 |
+| 10 | Admin dashboard for services, employees, appointments, payment approval, reports             | ✔️ Done      | A comprehensive dashboard with charts, stats, and activity feed is complete.                      |
+| 11 | Beauticians can view their assigned schedules/appointments                                   | ○ To Do       | A dedicated login and dashboard for the 'beautician' role needs to be created.                    |
+| 12 | Customers can leave ratings and reviews                                                      | ○ To Do       | The database table exists, but the feature has not been implemented.                              |
