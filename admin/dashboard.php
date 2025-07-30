@@ -1,62 +1,101 @@
 <?php
-require_once '../includes/db_connect.php';
+// --- LOGIC FIRST ---
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$page_title = "Admin Dashboard";
+$page_specific_css = "/parlor/admin/assets/css/dashboard.css";
 require_once 'include/header.php';
+require_once '../includes/db_connect.php';
 
 // --- DATA FETCHING ---
 
-// 1. Appointment Statistics (All statuses) & Total Revenue
-$query_appointments = "SELECT 
-    COUNT(*) as total_appointments,
-    SUM(CASE WHEN status = 'booked' THEN 1 ELSE 0 END) as pending_appointments,
-    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_appointments,
-    SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_appointments,
-    SUM(CASE WHEN status = 'completed' THEN s.price ELSE 0 END) as total_revenue
+// 1. Monthly Statistics
+$first_day_month = date('Y-m-01');
+$stats_query = "
+    SELECT
+        (SELECT COALESCE(SUM(s.price), 0) FROM appointments a JOIN services s ON a.service_id = s.id WHERE a.status = 'completed' AND a.scheduled_at >= '$first_day_month') as revenue_this_month,
+        (SELECT COUNT(*) FROM appointments WHERE scheduled_at >= '$first_day_month') as appointments_this_month,
+        (SELECT COUNT(*) FROM users WHERE role = 'customer' AND created_at >= '$first_day_month') as new_customers_this_month,
+        (SELECT COUNT(*) FROM employees e JOIN users u ON e.user_id = u.id WHERE u.is_active = 1) as active_employees,
+        (SELECT COUNT(*) FROM appointments WHERE status = 'booked') as booked_appointments,
+        (SELECT COUNT(*) FROM appointments WHERE status = 'completed') as completed_appointments,
+        (SELECT COUNT(*) FROM appointments WHERE status = 'cancelled') as cancelled_appointments
+";
+$stats_result = $conn->query($stats_query);
+$stats = $stats_result->fetch_assoc();
+
+// 2. Top Employees (by revenue this month)
+$top_employees_query = "
+    SELECT u.name, COALESCE(SUM(s.price), 0) as revenue
     FROM appointments a
-    JOIN services s ON a.service_id = s.id";
-$result = $conn->query($query_appointments);
-$appointment_stats = $result->fetch_assoc();
+    JOIN employees e ON a.employee_id = e.id
+    JOIN users u ON e.user_id = u.id
+    JOIN services s ON a.service_id = s.id
+    WHERE a.status = 'completed' AND a.scheduled_at >= '$first_day_month'
+    GROUP BY u.name ORDER BY revenue DESC LIMIT 3
+";
+$top_employees = $conn->query($top_employees_query);
 
-// 2. Employee Count
-$query_employees = "SELECT COUNT(*) as total_employees FROM employees";
-$result = $conn->query($query_employees);
-$employee_stats = $result->fetch_assoc();
+// 3. Top Services (by bookings this month)
+$top_services_query = "
+    SELECT s.name, COUNT(a.id) as booking_count
+    FROM appointments a
+    JOIN services s ON a.service_id = s.id
+    WHERE a.scheduled_at >= '$first_day_month'
+    GROUP BY s.name ORDER BY booking_count DESC LIMIT 3
+";
+$top_services = $conn->query($top_services_query);
 
-// 3. Service Count
-$query_services = "SELECT COUNT(*) as total_services FROM services";
-$result = $conn->query($query_services);
-$service_stats = $result->fetch_assoc();
+// 4. Recent Activity Feed (Query updated to show up to 9 items)
+$recent_activity_query = "
+    (
+        -- New Customers
+        SELECT 'new_customer' as type, u.id as user_id, u.name, u.created_at as activity_time, NULL as amount
+        FROM users u
+        WHERE u.role = 'customer'
+        ORDER BY u.created_at DESC
+        LIMIT 3
+    )
+    UNION ALL
+    (
+        -- New Payments from Completed Appointments
+        SELECT 'new_payment' as type, u.id as user_id, u.name, b.payment_time as activity_time, b.amount
+        FROM bills b
+        JOIN appointments a ON b.appointment_id = a.id
+        JOIN users u ON a.customer_id = u.id
+        ORDER BY b.payment_time DESC
+        LIMIT 3
+    )
+    UNION ALL
+    (
+        -- Newly Booked Appointments
+        SELECT 'new_booking' as type, u.id as user_id, u.name, a.created_at as activity_time, NULL as amount
+        FROM appointments a
+        JOIN users u ON a.customer_id = u.id
+        WHERE a.status = 'booked'
+        ORDER BY a.created_at DESC
+        LIMIT 3
+    )
+    ORDER BY activity_time DESC
+    LIMIT 9
+";
+$recent_activities = $conn->query($recent_activity_query);
 
-// 4. Customer Count
-$query_customers = "SELECT COUNT(*) as total_customers FROM users WHERE role = 'customer'";
-$result = $conn->query($query_customers);
-$customer_stats = $result->fetch_assoc();
-
-// 5. Today's Appointments (using prepared statement)
-$today = date('Y-m-d');
-$query_today = "SELECT a.scheduled_at, a.status, u.name as customer_name, eu.name as employee_name, s.name as service_name
-                FROM appointments a
-                JOIN users u ON a.customer_id = u.id
-                JOIN employees e ON a.employee_id = e.id
-                JOIN users eu ON e.user_id = eu.id
-                JOIN services s ON a.service_id = s.id
-                WHERE DATE(a.scheduled_at) = ?
-                ORDER BY a.scheduled_at ASC
-                LIMIT 5";
-$stmt = $conn->prepare($query_today);
-$stmt->bind_param("s", $today);
-$stmt->execute();
-$today_appointments = $stmt->get_result();
-
-// 6. Data for Monthly Appointments Chart (Last 6 Months)
-$monthly_chart_data = [];
-for ($i = 5; $i >= 0; $i--) {
-    $month = date('Y-m', strtotime("-$i months"));
-    $month_name = date('M Y', strtotime("-$i months"));
-    $query = "SELECT COUNT(*) as count FROM appointments WHERE DATE_FORMAT(scheduled_at, '%Y-%m') = '$month'";
-    $result = $conn->query($query);
-    $data = $result->fetch_assoc();
-    $monthly_chart_data['labels'][] = $month_name;
-    $monthly_chart_data['data'][] = $data['count'];
+// 5. Data for Monthly Appointments Chart
+$six_months_ago = date('Y-m-01', strtotime('-5 months'));
+$monthly_chart_query = "
+    SELECT DATE_FORMAT(scheduled_at, '%b %Y') as month, COUNT(*) as count
+    FROM appointments
+    WHERE scheduled_at >= '$six_months_ago'
+    GROUP BY DATE_FORMAT(scheduled_at, '%Y-%m')
+    ORDER BY DATE_FORMAT(scheduled_at, '%Y-%m') ASC
+";
+$monthly_result = $conn->query($monthly_chart_query);
+$monthly_chart_data = ['labels' => [], 'data' => []];
+while ($row = $monthly_result->fetch_assoc()) {
+    $monthly_chart_data['labels'][] = $row['month'];
+    $monthly_chart_data['data'][] = $row['count'];
 }
 ?>
 
@@ -65,149 +104,94 @@ for ($i = 5; $i >= 0; $i--) {
 
 <div class="container-fluid">
     <h1 class="mt-4">Dashboard</h1>
-    <p>Welcome to the Aura Salon & Spa admin panel. Here's a summary of your business activity.</p>
+    <p class="text-muted">Welcome back, <?php echo $admin_name; ?>. Here's your monthly performance overview.</p>
     
     <div class="row">
-        <!-- Total Appointments -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-primary text-white mb-4 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="mb-0"><?php echo $appointment_stats['total_appointments'] ?? 0; ?></h2>
-                            <p class="mb-0">Total Appointments</p>
-                        </div>
-                        <i class="fas fa-calendar-check fa-3x opacity-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a class="small text-white stretched-link" href="appointments.php">View Details</a>
-                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                </div>
-            </div>
-        </div>
-        <!-- Total Revenue -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-success text-white mb-4 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="mb-0">$<?php echo number_format($appointment_stats['total_revenue'] ?? 0, 2); ?></h2>
-                            <p class="mb-0">Total Revenue</p>
-                        </div>
-                        <i class="fas fa-dollar-sign fa-3x opacity-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a class="small text-white stretched-link" href="reports.php">View Reports</a>
-                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                </div>
-            </div>
-        </div>
-        <!-- Total Customers -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-warning text-dark mb-4 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="mb-0"><?php echo $customer_stats['total_customers'] ?? 0; ?></h2>
-                            <p class="mb-0">Total Customers</p>
-                        </div>
-                        <i class="fas fa-users fa-3x opacity-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a class="small text-dark stretched-link" href="customers.php">Manage Customers</a>
-                    <div class="small text-dark"><i class="fas fa-angle-right"></i></div>
-                </div>
-            </div>
-        </div>
-        <!-- Total Employees -->
-        <div class="col-xl-3 col-md-6">
-            <div class="card bg-danger text-white mb-4 shadow-sm">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h2 class="mb-0"><?php echo $employee_stats['total_employees'] ?? 0; ?></h2>
-                            <p class="mb-0">Total Employees</p>
-                        </div>
-                        <i class="fas fa-user-tie fa-3x opacity-50"></i>
-                    </div>
-                </div>
-                <div class="card-footer d-flex align-items-center justify-content-between">
-                    <a class="small text-white stretched-link" href="employees.php">View Details</a>
-                    <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                </div>
-            </div>
-        </div>
+        <!-- Stat Cards -->
+        <div class="col-xl-3 col-md-6 mb-4"><div class="card shadow-sm stat-card border-primary h-100"><div class="card-body"><div class="stat-text"><p class="mb-2 text-muted">Revenue This Month</p><h2 class="mb-0">৳<?php echo number_format($stats['revenue_this_month'] ?? 0, 2); ?></h2></div><div class="stat-icon"><i class="fas fa-dollar-sign"></i></div></div></div></div>
+        <div class="col-xl-3 col-md-6 mb-4"><div class="card shadow-sm stat-card border-success h-100"><div class="card-body"><div class="stat-text"><p class="mb-2 text-muted">Appointments This Month</p><h2 class="mb-0"><?php echo $stats['appointments_this_month'] ?? 0; ?></h2></div><div class="stat-icon"><i class="fas fa-calendar-check"></i></div></div></div></div>
+        <div class="col-xl-3 col-md-6 mb-4"><div class="card shadow-sm stat-card border-warning h-100"><div class="card-body"><div class="stat-text"><p class="mb-2 text-muted">New Customers This Month</p><h2 class="mb-0"><?php echo $stats['new_customers_this_month'] ?? 0; ?></h2></div><div class="stat-icon"><i class="fas fa-users"></i></div></div></div></div>
+        <div class="col-xl-3 col-md-6 mb-4"><div class="card shadow-sm stat-card border-info h-100"><div class="card-body"><div class="stat-text"><p class="mb-2 text-muted">Active Employees</p><h2 class="mb-0"><?php echo $stats['active_employees'] ?? 0; ?></h2></div><div class="stat-icon"><i class="fas fa-user-tie"></i></div></div></div></div>
     </div>
     
     <div class="row">
         <!-- Monthly Appointments Chart -->
-        <div class="col-xl-8">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header">
-                    <i class="fas fa-chart-area me-1"></i>
-                    Monthly Appointments (Last 6 Months)
-                </div>
-                <div class="card-body"><canvas id="monthlyAppointmentsChart" width="100%" height="40"></canvas></div>
+        <div class="col-xl-8 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header"><i class="fas fa-chart-area me-1"></i>Monthly Appointments (Last 6 Months)</div>
+                <div class="card-body"><canvas id="monthlyAppointmentsChart" width="100%" height="50"></canvas></div>
             </div>
         </div>
-        <!-- Appointment Status Chart -->
-        <div class="col-xl-4">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-header">
-                    <i class="fas fa-chart-pie me-1"></i>
-                    Appointment Status
+        <!-- Insights Column -->
+        <div class="col-xl-4 mb-4">
+            <!-- Top Employees Card -->
+            <div class="card shadow-sm mb-4 insight-card">
+                <div class="card-header"><i class="fas fa-trophy me-1"></i>Top Employees (This Month)</div>
+                <ul class="list-group list-group-flush">
+                    <?php if ($top_employees && $top_employees->num_rows > 0): ?>
+                        <?php while($row = $top_employees->fetch_assoc()): ?>
+                            <li class="list-group-item"><?php echo htmlspecialchars($row['name']); ?> <span class="badge bg-success">৳<?php echo number_format($row['revenue']); ?></span></li>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <li class="list-group-item text-muted">No revenue data for this month yet.</li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+            <!-- Top Services Card -->
+            <div class="card shadow-sm insight-card mb-4">
+                <div class="card-header"><i class="fas fa-star me-1"></i>Top Services (This Month)</div>
+                <ul class="list-group list-group-flush">
+                    <?php if ($top_services && $top_services->num_rows > 0): ?>
+                        <?php while($row = $top_services->fetch_assoc()): ?>
+                            <li class="list-group-item"><?php echo htmlspecialchars($row['name']); ?> <span class="badge bg-primary"><?php echo $row['booking_count']; ?> bookings</span></li>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <li class="list-group-item text-muted">No bookings for this month yet.</li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+            <!-- Appointment Status Chart -->
+            <div class="card shadow-sm insight-card">
+                <div class="card-header"><i class="fas fa-chart-pie me-1"></i>Appointment Status Overview</div>
+                <div class="card-body">
+                    <canvas id="appointmentStatusChart" width="100%" height="100"></canvas>
                 </div>
-                <div class="card-body"><canvas id="appointmentStatusChart" width="100%" height="100"></canvas></div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-4 shadow-sm">
-        <div class="card-header">
-            <i class="fas fa-calendar-day me-1"></i>
-            Today's Appointments
-        </div>
-        <div class="card-body">
-            <?php if ($today_appointments && $today_appointments->num_rows > 0): ?>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Customer</th>
-                                <th>Service</th>
-                                <th>Beautician</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php while ($row = $today_appointments->fetch_assoc()): ?>
-                                <tr>
-                                    <td><?php echo date('h:i A', strtotime($row['scheduled_at'])); ?></td>
-                                    <td><?php echo htmlspecialchars($row['customer_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['service_name']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['employee_name']); ?></td>
-                                    <td>
-                                        <?php 
-                                        $badge_class = 'bg-secondary';
-                                        switch($row['status']) {
-                                            case 'booked': $badge_class = 'bg-info'; break;
-                                            case 'completed': $badge_class = 'bg-success'; break;
-                                            case 'cancelled': $badge_class = 'bg-danger'; break;
-                                        }
-                                        ?>
-                                        <span class="badge <?php echo $badge_class; ?>"><?php echo ucfirst($row['status']); ?></span>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
-                        </tbody>
-                    </table>
-                </div>
+    <!-- Recent Activity (UPGRADED HTML) -->
+    <div class="card shadow-sm mb-4 activity-feed">
+        <div class="card-header"><i class="fas fa-history me-1"></i>Recent Activity</div>
+        <div class="list-group list-group-flush">
+            <?php if ($recent_activities && $recent_activities->num_rows > 0): ?>
+                <?php while($activity = $recent_activities->fetch_assoc()): ?>
+                    <?php 
+                        $user_link = "view_user.php?id=" . $activity['user_id'];
+                        $user_name_html = "<a href='{$user_link}' class='fw-bold text-decoration-none'>".htmlspecialchars($activity['name'])."</a>";
+                    ?>
+                    <?php if ($activity['type'] == 'new_customer'): ?>
+                        <div class="list-group-item list-group-item-action border-warning">
+                            <i class="fas fa-user-plus me-2 text-warning"></i>
+                            New customer <?php echo $user_name_html; ?> signed up.
+                            <small class="text-muted float-end"><?php echo date('d M, h:i A', strtotime($activity['activity_time'])); ?></small>
+                        </div>
+                    <?php elseif ($activity['type'] == 'new_payment'): ?>
+                        <div class="list-group-item list-group-item-action border-success">
+                            <i class="fas fa-check-circle me-2 text-success"></i>
+                            Payment of <strong>৳<?php echo number_format($activity['amount'], 2); ?></strong> received from <?php echo $user_name_html; ?>.
+                            <small class="text-muted float-end"><?php echo date('d M, h:i A', strtotime($activity['activity_time'])); ?></small>
+                        </div>
+                    <?php elseif ($activity['type'] == 'new_booking'): ?>
+                        <div class="list-group-item list-group-item-action border-info">
+                            <i class="fas fa-calendar-plus me-2 text-info"></i>
+                            New appointment booked by <?php echo $user_name_html; ?>.
+                            <small class="text-muted float-end"><?php echo date('d M, h:i A', strtotime($activity['activity_time'])); ?></small>
+                        </div>
+                    <?php endif; ?>
+                <?php endwhile; ?>
             <?php else: ?>
-                <p class="text-center text-muted py-3">No appointments scheduled for today.</p>
+                <div class="list-group-item text-muted text-center py-3">No recent activity to show.</div>
             <?php endif; ?>
         </div>
     </div>
@@ -217,7 +201,7 @@ for ($i = 5; $i >= 0; $i--) {
 document.addEventListener("DOMContentLoaded", function() {
     // Monthly Appointments Chart (Bar Chart)
     var ctxBar = document.getElementById("monthlyAppointmentsChart").getContext('2d');
-    var monthlyChart = new Chart(ctxBar, {
+    new Chart(ctxBar, {
         type: 'bar',
         data: {
             labels: <?php echo json_encode($monthly_chart_data['labels']); ?>,
@@ -225,60 +209,65 @@ document.addEventListener("DOMContentLoaded", function() {
                 label: "Appointments",
                 backgroundColor: "rgba(106, 17, 203, 0.7)",
                 borderColor: "rgba(106, 17, 203, 1)",
+                hoverBackgroundColor: "rgba(106, 17, 203, 0.9)",
                 borderWidth: 1,
+                borderRadius: 5,
                 data: <?php echo json_encode($monthly_chart_data['data']); ?>,
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+            plugins: { legend: { display: false } }
         }
     });
 
-    // Appointment Status Chart (Pie Chart)
+     // Appointment Status Chart (Doughnut Chart)
     var ctxPie = document.getElementById("appointmentStatusChart").getContext('2d');
-    var statusChart = new Chart(ctxPie, {
+    new Chart(ctxPie, {
         type: 'doughnut',
         data: {
             labels: ["Booked", "Completed", "Cancelled"],
             datasets: [{
                 data: [
-                    <?php echo $appointment_stats['pending_appointments'] ?? 0; ?>,
-                    <?php echo $appointment_stats['completed_appointments'] ?? 0; ?>,
-                    <?php echo $appointment_stats['cancelled_appointments'] ?? 0; ?>
+                    <?php echo $stats['booked_appointments'] ?? 0; ?>,
+                    <?php echo $stats['completed_appointments'] ?? 0; ?>,
+                    <?php echo $stats['cancelled_appointments'] ?? 0; ?>
                 ],
                 backgroundColor: ['#0dcaf0', '#198754', '#dc3545'],
+                borderColor: '#fff',
+                borderWidth: 2,
                 hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                title: {
-                    display: false,
-                    text: 'Appointment Status'
-                }
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { 
+                    position: 'top' 
+                } 
             }
         }
     });
 });
+document.addEventListener("DOMContentLoaded", function() {
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+    // Initialize popovers
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    }); 
+    // Initialize dropdowns
+    var dropdownTriggerList = [].slice.call(document.querySelectorAll('.dropdown-toggle'));
+    var dropdownList = dropdownTriggerList.map(function (dropdownTriggerEl) {
+        return new bootstrap.Dropdown(dropdownTriggerEl);
+    });
 </script>
 
 <?php require_once 'include/footer.php'; ?>

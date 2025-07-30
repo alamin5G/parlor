@@ -1,0 +1,59 @@
+.stat-card {
+    border-left: 4px solid;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08) !important;
+}
+
+.stat-card.border-primary { border-color: #6a11cb !important; }
+.stat-card.border-success { border-color: #198754 !important; }
+.stat-card.border-warning { border-color: #ffc107 !important; }
+.stat-card.border-info { border-color: #0dcaf0 !important; }
+
+.stat-card .card-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.stat-card .stat-icon {
+    font-size: 3rem;
+    opacity: 0.2;
+    color: #6c757d;
+}
+
+.stat-card .stat-text h2 {
+    font-weight: 600;
+}
+
+.stat-card .card-footer {
+    background-color: #f8f9fa;
+    font-size: 0.9rem;
+}
+
+.appointments-today-table thead th {
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+/* New styles for insight cards */
+.insight-card .list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+}
+
+.insight-card .list-group-item .badge {
+    font-size: 0.9rem;
+}
+
+.activity-feed .list-group-item {
+    border-left-width: 4px;
+    border-left-style: solid;
+}
+.activity-feed .list-group-item.border-success { border-color: #198754 !important; }
+.activity-feed .list-group-item.border-info { border-color: #0dcaf0 !important; }

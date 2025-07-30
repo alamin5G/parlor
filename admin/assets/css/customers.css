@@ -1,0 +1,75 @@
+/* Table Styling */
+#customersTable thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    background-color: #f8f9fa;
+}
+
+#customersTable tbody tr:hover {
+    background-color: #f1f3f5;
+    cursor: pointer;
+}
+
+#customersTable td {
+    vertical-align: middle;
+}
+
+/* Improved Status Badges */
+.badge {
+    padding: 0.4em 0.7em;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    border-radius: 0.5rem;
+}
+.badge.bg-success {
+    background-color: #d1e7dd !important;
+    color: #0f5132 !important;
+}
+.badge.bg-secondary {
+    background-color: #e2e3e5 !important;
+    color: #41464b !important;
+}
+.badge.bg-info {
+    background-color: #cff4fc !important;
+    color: #055160 !important;
+}
+.badge.bg-warning {
+    background-color: #fff3cd !important;
+    color: #664d03 !important;
+}
+
+/* Actions Dropdown in Table */
+.table .dropdown-menu {
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: 1px solid #eee;
+}
+.table .dropdown-item {
+    font-size: 0.9rem;
+}
+
+/* DataTables Customization */
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 0.4em 0.8em;
+    border-radius: 0.25rem;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    background: var(--sidebar-active) !important;
+    color: #fff !important;
+    border-color: var(--sidebar-active) !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #e9ecef !important;
+    border-color: #dee2e6 !important;
+}
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter {
+    margin-bottom: 1rem;
+}
+.dataTables_wrapper .form-control-sm {
+    border-radius: 0.25rem;
+}

@@ -1,0 +1,39 @@
+/* Table Styling */
+#billsTable thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+    background-color: #f8f9fa;
+}
+
+#billsTable tbody tr:hover {
+    background-color: #f1f3f5;
+}
+
+#billsTable td {
+    vertical-align: middle;
+}
+
+/* DataTables Customization */
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 0.4em 0.8em;
+    border-radius: 0.25rem;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    background: var(--sidebar-active) !important;
+    color: #fff !important;
+    border-color: var(--sidebar-active) !important;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #e9ecef !important;
+    border-color: #dee2e6 !important;
+}
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter {
+    margin-bottom: 1rem;
+}
+.dataTables_wrapper .form-control-sm {
+    border-radius: 0.25rem;
+}

@@ -1,49 +1,66 @@
 <?php
+// --- LOGIC FIRST ---
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$page_title = "Manage Employees";
+$page_specific_css = "/parlor/admin/assets/css/employees.css"; // Link to the new CSS file
 require_once 'include/header.php';
+require_once '../includes/db_connect.php';
 
-// Delete employee functionality
+// --- Delete employee functionality (with safety check) ---
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $employee_id = $_GET['delete'];
-    // Get the user_id from employee record first
-    $stmt = $conn->prepare("SELECT user_id FROM employees WHERE id = ?");
-    $stmt->bind_param("i", $employee_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    
-    if ($row = $result->fetch_assoc()) {
-        $user_id = $row['user_id'];
+    $employee_id = intval($_GET['delete']);
+
+    // 1. Check if the employee has any associated appointments
+    $check_stmt = $conn->prepare("SELECT COUNT(*) as count FROM appointments WHERE employee_id = ?");
+    $check_stmt->bind_param("i", $employee_id);
+    $check_stmt->execute();
+    $appointment_count = $check_stmt->get_result()->fetch_assoc()['count'];
+    $check_stmt->close();
+
+    if ($appointment_count > 0) {
+        // If they have appointments, show an error and do not delete
+        $error_msg = "Cannot delete employee. They have {$appointment_count} associated appointments. Please reassign or cancel them first.";
+    } else {
+        // 2. If no appointments, proceed with deletion
+        $stmt = $conn->prepare("SELECT user_id FROM employees WHERE id = ?");
+        $stmt->bind_param("i", $employee_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
         
-        // Start transaction to ensure both records are deleted
-        $conn->begin_transaction();
-        
-        try {
-            // Delete from employees table first (foreign key)
-            $delete_employee = $conn->prepare("DELETE FROM employees WHERE id = ?");
-            $delete_employee->bind_param("i", $employee_id);
-            $delete_employee->execute();
+        if ($row = $result->fetch_assoc()) {
+            $user_id = $row['user_id'];
             
-            // Then delete from users table
-            $delete_user = $conn->prepare("DELETE FROM users WHERE id = ?");
-            $delete_user->bind_param("i", $user_id);
-            $delete_user->execute();
-            
-            // Commit the transaction
-            $conn->commit();
-            
-            $success_msg = "Employee deleted successfully.";
-        } catch (Exception $e) {
-            // Rollback on error
-            $conn->rollback();
-            $error_msg = "Error deleting employee: " . $e->getMessage();
+            $conn->begin_transaction();
+            try {
+                $conn->prepare("DELETE FROM employees WHERE id = ?")->execute([$employee_id]);
+                $conn->prepare("DELETE FROM users WHERE id = ?")->execute([$user_id]);
+                $conn->commit();
+                $success_msg = "Employee deleted successfully.";
+            } catch (Exception $e) {
+                $conn->rollback();
+                $error_msg = "Error deleting employee: " . $e->getMessage();
+            }
         }
+        $stmt->close();
     }
 }
 
-// Fetch all employees with user data
-$query = "SELECT e.*, u.name, u.email, u.phone 
-          FROM employees e 
-          JOIN users u ON e.user_id = u.id 
-          ORDER BY e.id DESC";
+// Fetch all employees with performance data
+$query = "
+    SELECT 
+        e.id, e.specialization, e.hire_date,
+        u.name, u.email, u.phone, u.is_active,
+        COUNT(a.id) as total_appointments,
+        COALESCE(SUM(CASE WHEN a.status = 'completed' THEN s.price ELSE 0 END), 0) AS total_revenue
+    FROM employees e 
+    JOIN users u ON e.user_id = u.id 
+    LEFT JOIN appointments a ON e.id = a.employee_id
+    LEFT JOIN services s ON a.service_id = s.id
+    GROUP BY e.id, u.id
+    ORDER BY e.id DESC
+";
 $result = $conn->query($query);
 ?>
 
@@ -51,30 +68,29 @@ $result = $conn->query($query);
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Manage Employees</h1>
         <a href="add_employee.php" class="btn btn-primary">
-            <i class="fas fa-plus-circle me-2"></i>Add New Employee
+            <i class="fas fa-user-plus me-2"></i>Add New Employee
         </a>
     </div>
     
     <?php if (isset($success_msg)): ?>
-        <div class="alert alert-success"><?php echo $success_msg; ?></div>
+        <div class="alert alert-success alert-dismissible fade show" role="alert"><?php echo $success_msg; ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     <?php endif; ?>
     
     <?php if (isset($error_msg)): ?>
-        <div class="alert alert-danger"><?php echo $error_msg; ?></div>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert"><?php echo $error_msg; ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
     <?php endif; ?>
     
     <div class="card shadow-sm">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table id="employeesTable" class="table table-hover align-middle">
                     <thead class="table-light">
                         <tr>
                             <th>ID</th>
                             <th>Name</th>
-                            <th>Email</th>
-                            <th>Phone</th>
                             <th>Specialization</th>
-                            <th>Hire Date</th>
+                            <th>Appointments</th>
+                            <th>Revenue</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -84,38 +100,37 @@ $result = $conn->query($query);
                             <?php while ($row = $result->fetch_assoc()): ?>
                                 <tr>
                                     <td><?php echo $row['id']; ?></td>
-                                    <td><?php echo htmlspecialchars($row['name']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['email']); ?></td>
-                                    <td><?php echo htmlspecialchars($row['phone'] ?? 'N/A'); ?></td>
-                                    <td><?php echo htmlspecialchars($row['specialization'] ?? 'General'); ?></td>
-                                    <td><?php echo $row['hire_date'] ? date('M d, Y', strtotime($row['hire_date'])) : 'N/A'; ?></td>
                                     <td>
-                                        <span class="badge <?php echo $row['status'] === 'active' ? 'bg-success' : 'bg-danger'; ?>">
-                                            <?php echo ucfirst($row['status']); ?>
+                                        <div><?php echo htmlspecialchars($row['name']); ?></div>
+                                        <small class="text-muted"><?php echo htmlspecialchars($row['email']); ?></small>
+                                    </td>
+                                    <td><?php echo htmlspecialchars($row['specialization'] ?? 'General'); ?></td>
+                                    <td class="text-center"><?php echo $row['total_appointments']; ?></td>
+                                    <td>৳<?php echo number_format($row['total_revenue'], 2); ?></td>
+                                    <td>
+                                        <span class="badge <?php echo $row['is_active'] ? 'bg-success' : 'bg-danger'; ?>">
+                                            <?php echo $row['is_active'] ? 'Active' : 'Inactive'; ?>
                                         </span>
                                     </td>
                                     <td>
-                                        <a href="view_employee.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-info">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="edit_employee.php?id=<?php echo $row['id']; ?>" class="btn btn-sm btn-warning">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                         <!-- MODIFIED DELETE BUTTON -->
-                                        <button type="button" class="btn btn-sm btn-danger" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#deleteEmployeeModal" 
-                                                data-id="<?php echo $row['id']; ?>"
-                                                data-name="<?php echo htmlspecialchars($row['name']); ?>">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Actions</button>
+                                            <ul class="dropdown-menu">
+                                                <li><a class="dropdown-item" href="view_employee.php?id=<?php echo $row['id']; ?>"><i class="fas fa-eye fa-fw me-2"></i>View</a></li>
+                                                <li><a class="dropdown-item" href="edit_employee.php?id=<?php echo $row['id']; ?>"><i class="fas fa-edit fa-fw me-2"></i>Edit</a></li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteEmployeeModal" data-id="<?php echo $row['id']; ?>" data-name="<?php echo htmlspecialchars($row['name']); ?>">
+                                                        <i class="fas fa-trash fa-fw me-2"></i>Delete
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
-                            <tr>
-                                <td colspan="8" class="text-center">No employees found</td>
-                            </tr>
+                            <tr><td colspan="7" class="text-center">No employees found</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -145,17 +160,20 @@ $result = $conn->query($query);
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+$(document).ready(function() {
+    // Initialize DataTables
+    $('#employeesTable').DataTable({
+        "order": [[0, "desc"]], // Default sort by ID descending
+        "pageLength": 10
+    });
+
+    // Handle modal popup for deletion
     var deleteEmployeeModal = document.getElementById('deleteEmployeeModal');
     deleteEmployeeModal.addEventListener('show.bs.modal', function (event) {
-        // Button that triggered the modal
         var button = event.relatedTarget;
-        
-        // Extract info from data-* attributes
         var employeeId = button.getAttribute('data-id');
         var employeeName = button.getAttribute('data-name');
         
-        // Update the modal's content.
         var modalBodyName = deleteEmployeeModal.querySelector('#employeeNameToDelete');
         var confirmDeleteButton = deleteEmployeeModal.querySelector('#confirmDeleteButton');
         
@@ -164,4 +182,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+
 <?php require_once 'include/footer.php'; ?>
