@@ -1,4 +1,5 @@
 <?php
+// filepath: c:\xampp\htdocs\parlor\employee\appointment_view.php
 $page_title = "Appointment Details";
 require_once 'include/header.php';
 
@@ -11,31 +12,30 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $appt_id = intval($_GET['id']);
 
 // Get this employee's id
-$stmt = $conn->prepare("SELECT id FROM employees WHERE user_id = ?");
-$stmt->bind_param("i", $employee_user_id);
-$stmt->execute();
-$employee_id = $stmt->get_result()->fetch_assoc()['id'];
-$stmt->close();
+$employee_stmt = $conn->prepare("SELECT id FROM employees WHERE user_id = ?");
+$employee_stmt->bind_param("i", $employee_user_id);
+$employee_stmt->execute();
+$employee_id = $employee_stmt->get_result()->fetch_assoc()['id'];
+$employee_stmt->close();
 
 // Fetch appointment with joined info
-$sql = "SELECT a.*, 
+$appt_stmt = $conn->prepare("SELECT a.*, 
         u.name AS customer_name, u.phone AS customer_phone, u.email AS customer_email,
         s.name AS service_name, s.price AS service_price
         FROM appointments a
         JOIN users u ON a.customer_id = u.id
         JOIN services s ON a.service_id = s.id
-        WHERE a.id = ? AND a.employee_id = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $appt_id, $employee_id);
-$stmt->execute();
-$result = $stmt->get_result();
+        WHERE a.id = ? AND a.employee_id = ?");
+$appt_stmt->bind_param("ii", $appt_id, $employee_id);
+$appt_stmt->execute();
+$result = $appt_stmt->get_result();
+$appt_stmt->close();
 
 // Mark as seen
-$stmt = $conn->prepare("UPDATE appointments SET is_seen_by_employee = 1 WHERE id = ? AND employee_id = ?");
-$stmt->bind_param("ii", $appt_id, $employee_id);
-$stmt->execute();
-$stmt->close();
-
+$seen_stmt = $conn->prepare("UPDATE appointments SET is_seen_by_employee = 1 WHERE id = ? AND employee_id = ?");
+$seen_stmt->bind_param("ii", $appt_id, $employee_id);
+$seen_stmt->execute();
+$seen_stmt->close();
 
 if ($result->num_rows == 0) {
     echo "<div class='alert alert-danger'>Appointment not found or not assigned to you.</div>";
@@ -43,18 +43,17 @@ if ($result->num_rows == 0) {
     exit;
 }
 $appt = $result->fetch_assoc();
-$stmt->close();
 
 // Get bill info (if exists)
 $bill = null;
-$stmt = $conn->prepare("SELECT * FROM bills WHERE appointment_id = ?");
-$stmt->bind_param("i", $appt_id);
-$stmt->execute();
-$bill_result = $stmt->get_result();
+$bill_stmt = $conn->prepare("SELECT * FROM bills WHERE appointment_id = ?");
+$bill_stmt->bind_param("i", $appt_id);
+$bill_stmt->execute();
+$bill_result = $bill_stmt->get_result();
 if ($bill_result->num_rows > 0) {
     $bill = $bill_result->fetch_assoc();
 }
-$stmt->close();
+$bill_stmt->close();
 
 // After fetching $appt and $bill above, fetch review
 $review_stmt = $conn->prepare("SELECT * FROM reviews WHERE appointment_id = ?");
@@ -64,21 +63,20 @@ $review_result = $review_stmt->get_result();
 $review = $review_result->num_rows > 0 ? $review_result->fetch_assoc() : null;
 $review_stmt->close();
 
-
 // Handle status change (complete/cancel)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status_action'])) {
     $action = $_POST['status_action'];
     if (in_array($action, ['completed', 'cancelled']) && $appt['status'] == 'booked') {
-        $stmt = $conn->prepare("UPDATE appointments SET status=? WHERE id=? AND employee_id=?");
-        $stmt->bind_param("sii", $action, $appt_id, $employee_id);
-        if ($stmt->execute()) {
+        $update_stmt = $conn->prepare("UPDATE appointments SET status=? WHERE id=? AND employee_id=?");
+        $update_stmt->bind_param("sii", $action, $appt_id, $employee_id);
+        if ($update_stmt->execute()) {
             // Refresh data
             header("Location: appointment_view.php?id=$appt_id");
             exit;
         } else {
             $error_msg = "Failed to update appointment status.";
         }
-        $stmt->close();
+        $update_stmt->close();
     }
 }
 ?>

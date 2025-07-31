@@ -21,6 +21,24 @@ $profile_photo_path = $user_data['profile_photo'] ? htmlspecialchars($user_data[
 $employee_user_id = $_SESSION['user_id'];
 $stmt_user->close();
 
+// Get employee ID
+$stmt = $conn->prepare("SELECT id FROM employees WHERE user_id = ?");
+$stmt->bind_param("i", $employee_user_id);
+$stmt->execute();
+$employee_id = $stmt->get_result()->fetch_assoc()['id'] ?? 0;
+$stmt->close();
+
+// Get notification count for header bell
+$sql_notif_count = "SELECT COUNT(*) as count FROM appointments 
+                    WHERE employee_id = ? 
+                    AND (status = 'booked' OR status = 'confirmed') 
+                    AND is_seen_by_employee = 0";
+$stmt_count = $conn->prepare($sql_notif_count);
+$stmt_count->bind_param("i", $employee_id);
+$stmt_count->execute();
+$notification_count = $stmt_count->get_result()->fetch_assoc()['count'] ?? 0;
+$stmt_count->close();
+
 $current_page = basename($_SERVER['PHP_SELF']);
 $nav_sections = [
     'dashboard' => ['dashboard.php'],
@@ -63,10 +81,20 @@ function is_section_active($section, $current_page, $sections) {
         .top-navbar { background-color: #fff; border-radius: 0.5rem; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         .content-wrapper { flex: 1; }
         .profile-pic-nav { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-left: 15px; }
-        /* Notification Styles */
-        .notification-bell { font-size: 1.2rem; color: #6c757d; }
+        /* Enhanced Notification Styles */
+        .notification-bell { font-size: 1.2rem; color: #6c757d; transition: color 0.2s ease; }
+        .notification-bell:hover { color: #0d6efd; }
+        .notification-bell.has-notifications { color: #dc3545; }
         .notification-badge { position: absolute; top: -5px; right: -10px; padding: 0.25em 0.5em; font-size: 0.7rem; }
-        .notification-dropdown { width: 350px; max-height: 400px; overflow-y: auto; }
+        .notification-dropdown { width: 350px; max-height: 400px; overflow-y: auto; padding: 0; }
+        .notification-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background-color: #f8f9fa; border-bottom: 1px solid #e9ecef; }
+        .notification-item { padding: 10px 15px; border-bottom: 1px solid #e9ecef; transition: background-color 0.2s ease; }
+        .notification-item:last-child { border-bottom: none; }
+        .notification-item:hover { background-color: #f8f9fa; }
+        .notification-item .btn-sm { padding: 0.2rem 0.5rem; font-size: 0.75rem; }
+        .notification-footer { padding: 8px 15px; background-color: #f8f9fa; border-top: 1px solid #e9ecef; text-align: center; }
+        .notification-footer a { font-size: 0.875rem; color: #007bff; text-decoration: none; }
+        .notification-footer a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -94,15 +122,41 @@ function is_section_active($section, $current_page, $sections) {
         <nav class="navbar navbar-expand-lg top-navbar mb-4">
             <div class="container-fluid">
                 <div class="ms-auto d-flex align-items-center">
-                    <!-- Notification Bell -->
-                    <div class="dropdown">
-                        <a href="#" class="text-decoration-none position-relative me-3" data-bs-toggle="dropdown" aria-expanded="false" id="notificationBellLink">
-                            <i class="fas fa-bell notification-bell"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-badge" style="display: none;"></span>
+                    <!-- Enhanced Notification Bell -->
+                    <div class="dropdown notification-dropdown-container">
+                        <a href="#" class="text-decoration-none position-relative me-3" 
+                           id="notificationBellLink" 
+                           data-bs-toggle="dropdown" 
+                           data-bs-auto-close="outside" 
+                           aria-expanded="false">
+                            <i class="fas fa-bell notification-bell <?php if($notification_count > 0) echo 'has-notifications'; ?>"></i>
+                            <?php if($notification_count > 0): ?>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notification-badge">
+                                    <?= $notification_count <= 99 ? $notification_count : '99+' ?>
+                                </span>
+                            <?php endif; ?>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationBellLink" id="notification-list">
-                            <!-- Notifications will be loaded here by JavaScript -->
-                        </ul>
+                        <div class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationBellLink" id="notification-dropdown-menu">
+                            <div class="notification-header">
+                                <strong>Notifications</strong>
+                                <?php if($notification_count > 0): ?>
+                                    <button class="btn btn-sm btn-outline-secondary" id="mark-all-read-header">
+                                        <i class="fas fa-check-double"></i> Mark all read
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                            <div id="notification-list">
+                                <div class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2 mb-0 text-muted">Loading notifications...</p>
+                                </div>
+                            </div>
+                            <div class="notification-footer">
+                                <a href="dashboard.php">View all on dashboard</a>
+                            </div>
+                        </div>
                     </div>
                     <span class="navbar-text">Welcome, <?php echo $employee_name; ?>!</span>
                     <img src="<?php echo $profile_photo_path; ?>" alt="Profile Picture" class="profile-pic-nav">

@@ -1,4 +1,5 @@
 <?php
+// filepath: c:\xampp\htdocs\parlor\admin\dashboard.php
 // --- LOGIC FIRST ---
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -10,6 +11,10 @@ require_once '../includes/db_connect.php';
 
 // --- DATA FETCHING ---
 
+// Get count of pending payments for alert
+$pending_payments_query = "SELECT COUNT(*) as count FROM online_payments WHERE status = 'pending'";
+$pending_payments = $conn->query($pending_payments_query)->fetch_assoc()['count'];
+
 // 1. Monthly Statistics
 $first_day_month = date('Y-m-01');
 $stats_query = "
@@ -18,6 +23,7 @@ $stats_query = "
         (SELECT COUNT(*) FROM appointments WHERE scheduled_at >= '$first_day_month') as appointments_this_month,
         (SELECT COUNT(*) FROM users WHERE role = 'customer' AND created_at >= '$first_day_month') as new_customers_this_month,
         (SELECT COUNT(*) FROM employees e JOIN users u ON e.user_id = u.id WHERE u.is_active = 1) as active_employees,
+        (SELECT COUNT(*) FROM appointments WHERE status = 'pending_payment') as pending_payment_appointments,
         (SELECT COUNT(*) FROM appointments WHERE status = 'booked') as booked_appointments,
         (SELECT COUNT(*) FROM appointments WHERE status = 'completed') as completed_appointments,
         (SELECT COUNT(*) FROM appointments WHERE status = 'cancelled') as cancelled_appointments
@@ -47,11 +53,12 @@ $top_services_query = "
 ";
 $top_services = $conn->query($top_services_query);
 
-// 4. Recent Activity Feed (Query updated to show up to 9 items)
+// 4. Recent Activity Feed (Query updated to show up to 10 items)
+// FIXED: Changed op.created_at to op.submitted_at to match actual column name
 $recent_activity_query = "
     (
         -- New Customers
-        SELECT 'new_customer' as type, u.id as user_id, u.name, u.created_at as activity_time, NULL as amount
+        SELECT 'new_customer' as type, u.id as user_id, u.name, u.created_at as activity_time, NULL as amount, NULL as payment_id
         FROM users u
         WHERE u.role = 'customer'
         ORDER BY u.created_at DESC
@@ -59,26 +66,37 @@ $recent_activity_query = "
     )
     UNION ALL
     (
-        -- New Payments from Completed Appointments
-        SELECT 'new_payment' as type, u.id as user_id, u.name, b.payment_time as activity_time, b.amount
-        FROM bills b
-        JOIN appointments a ON b.appointment_id = a.id
+        -- New Online Payments
+        SELECT 'new_online_payment' as type, u.id as user_id, u.name, op.submitted_at as activity_time, op.amount, op.id as payment_id
+        FROM online_payments op
+        JOIN appointments a ON op.appointment_id = a.id
         JOIN users u ON a.customer_id = u.id
-        ORDER BY b.payment_time DESC
+        WHERE op.status = 'pending'
+        ORDER BY op.submitted_at DESC
         LIMIT 3
     )
     UNION ALL
     (
+        -- New Payments from Completed Appointments
+        SELECT 'new_payment' as type, u.id as user_id, u.name, b.payment_time as activity_time, b.amount, NULL as payment_id
+        FROM bills b
+        JOIN appointments a ON b.appointment_id = a.id
+        JOIN users u ON a.customer_id = u.id
+        ORDER BY b.payment_time DESC
+        LIMIT 2
+    )
+    UNION ALL
+    (
         -- Newly Booked Appointments
-        SELECT 'new_booking' as type, u.id as user_id, u.name, a.created_at as activity_time, NULL as amount
+        SELECT 'new_booking' as type, u.id as user_id, u.name, a.created_at as activity_time, NULL as amount, NULL as payment_id
         FROM appointments a
         JOIN users u ON a.customer_id = u.id
         WHERE a.status = 'booked'
         ORDER BY a.created_at DESC
-        LIMIT 3
+        LIMIT 2
     )
     ORDER BY activity_time DESC
-    LIMIT 9
+    LIMIT 10
 ";
 $recent_activities = $conn->query($recent_activity_query);
 
@@ -105,6 +123,25 @@ while ($row = $monthly_result->fetch_assoc()) {
 <div class="container-fluid">
     <h1 class="mt-4">Dashboard</h1>
     <p class="text-muted">Welcome back, <?php echo $admin_name; ?>. Here's your monthly performance overview.</p>
+    
+    <!-- Payment verification alert -->
+    <?php if ($pending_payments > 0): ?>
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <i class="fas fa-exclamation-triangle fa-2x"></i>
+            </div>
+            <div>
+                <h5 class="alert-heading mb-1">Attention Required: Payment Verification</h5>
+                <p class="mb-0">There <?= $pending_payments > 1 ? "are" : "is" ?> <strong><?= $pending_payments ?></strong> online payment<?= $pending_payments > 1 ? "s" : "" ?> awaiting verification.</p>
+            </div>
+            <div class="ms-auto">
+                <a href="online_payments.php?status=pending" class="btn btn-warning">Verify Now</a>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <?php endif; ?>
     
     <div class="row">
         <!-- Stat Cards -->
@@ -176,6 +213,16 @@ while ($row = $monthly_result->fetch_assoc()) {
                             New customer <?php echo $user_name_html; ?> signed up.
                             <small class="text-muted float-end"><?php echo date('d M, h:i A', strtotime($activity['activity_time'])); ?></small>
                         </div>
+                    <?php elseif ($activity['type'] == 'new_online_payment'): ?>
+                        <div class="list-group-item list-group-item-action border-warning">
+                            <i class="fas fa-money-check-alt me-2 text-warning"></i>
+                            <span class="badge bg-warning text-dark me-1">Pending</span>
+                            New online payment of <strong>৳<?php echo number_format($activity['amount'], 2); ?></strong> from <?php echo $user_name_html; ?>.
+                            <div class="mt-1">
+                                <a href="online_payments.php?payment_id=<?= $activity['payment_id'] ?>" class="btn btn-sm btn-outline-warning">Verify Now</a>
+                            </div>
+                            <small class="text-muted float-end"><?php echo date('d M, h:i A', strtotime($activity['activity_time'])); ?></small>
+                        </div>
                     <?php elseif ($activity['type'] == 'new_payment'): ?>
                         <div class="list-group-item list-group-item-action border-success">
                             <i class="fas fa-check-circle me-2 text-success"></i>
@@ -223,19 +270,20 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
-     // Appointment Status Chart (Doughnut Chart)
+    // Appointment Status Chart (Doughnut Chart)
     var ctxPie = document.getElementById("appointmentStatusChart").getContext('2d');
     new Chart(ctxPie, {
         type: 'doughnut',
         data: {
-            labels: ["Booked", "Completed", "Cancelled"],
+            labels: ["Pending Payment", "Booked", "Completed", "Cancelled"],
             datasets: [{
                 data: [
+                    <?php echo $stats['pending_payment_appointments'] ?? 0; ?>,
                     <?php echo $stats['booked_appointments'] ?? 0; ?>,
                     <?php echo $stats['completed_appointments'] ?? 0; ?>,
                     <?php echo $stats['cancelled_appointments'] ?? 0; ?>
                 ],
-                backgroundColor: ['#0dcaf0', '#198754', '#dc3545'],
+                backgroundColor: ['#ffc107', '#0dcaf0', '#198754', '#dc3545'],
                 borderColor: '#fff',
                 borderWidth: 2,
                 hoverOffset: 4
@@ -268,6 +316,7 @@ document.addEventListener("DOMContentLoaded", function() {
     var dropdownList = dropdownTriggerList.map(function (dropdownTriggerEl) {
         return new bootstrap.Dropdown(dropdownTriggerEl);
     });
+});
 </script>
 
 <?php require_once 'include/footer.php'; ?>
