@@ -248,6 +248,211 @@ Logs email reminders sent to customers for their appointments, including send st
 
 Maps which services each employee can perform (many-to-many relationship). Ensures customers are only assigned to employees qualified for the selected service.
 
+
+
+## Testing Plan
+
+This testing plan ensures all critical system components work correctly. Follow these steps to verify system functionality.
+
+### 1. Admin Setup Testing
+
+#### 1.1 Employee Management
+
+- **Create 5 employees with the following details:**
+
+  | Name          | Email              | Phone       | Specialization  |
+  | ------------- | ------------------ | ----------- | --------------- |
+  | Nadia Ahmed   | nadia@labonno.com  | 01712345601 | Hair Styling    |
+  | Farida Rahman | farida@labonno.com | 01712345602 | Makeup Artist   |
+  | Tania Islam   | tania@labonno.com  | 01712345603 | Nail Technician |
+  | Rima Khan     | rima@labonno.com   | 01712345604 | Skin Care       |
+  | Sadia Jahan   | sadia@labonno.com  | 01712345605 | Spa & Massage   |
+- **For each employee, verify:**
+
+  - Profile creation success
+  - Ability to login with provided credentials
+  - Profile details display correctly in admin dashboard
+  - Employee appears in appointment assignment dropdown
+
+#### 1.2 Service Management
+
+- **Create 10 services with the following details:**
+
+  | Service Name         | Description                          | Price (Tk) | Duration (min) |
+  | -------------------- | ------------------------------------ | ---------- | -------------- |
+  | Basic Haircut        | Simple haircut and styling           | 500        | 30             |
+  | Premium Hair Styling | Cut, color and style                 | 1500       | 90             |
+  | Regular Manicure     | Basic nail care and polish           | 300        | 30             |
+  | Gel Nail Extension   | Long-lasting gel nail extensions     | 800        | 60             |
+  | Basic Facial         | Cleansing and moisturizing facial    | 700        | 45             |
+  | Premium Facial       | Deep cleansing with special mask     | 1200       | 60             |
+  | Bridal Makeup        | Complete bridal makeup package       | 5000       | 120            |
+  | Party Makeup         | Evening/party makeup application     | 2000       | 60             |
+  | Full Body Massage    | Relaxing full body massage           | 1500       | 60             |
+  | Hair Spa Treatment   | Deep conditioning and hair treatment | 1000       | 45             |
+- **For each service, verify:**
+
+  - Service appears in the services list
+  - Details (price, duration) are correctly saved
+  - Service can be edited and updated
+  - Service appears in appointment booking options
+
+### 2. Customer Appointment Flow Testing
+
+#### 2.1 User Registration & Login
+
+- Create 3 test customer accounts
+- Verify email verification process
+- Test login functionality
+- Test profile management options
+
+#### 2.2 Appointment Booking
+
+- **Book 5 appointments with different combinations:**
+
+  - Different services
+  - Different employees
+  - Different time slots
+  - Different payment methods (both cash and online)
+- **For each appointment, verify:**
+
+  - Appointment appears in customer's dashboard
+  - Appointment appears in admin dashboard
+  - Appointment appears in assigned employee's dashboard
+  - Confirmation email is sent to customer
+
+#### 2.3 Appointment Rescheduling
+
+- Reschedule 2 appointments
+- Verify updated time reflects across all dashboards
+- Check notification/email for rescheduled appointment
+
+#### 2.4 Appointment Cancellation
+
+- Cancel 1 appointment
+- Verify removal from dashboards
+- Check notification/email for cancellation
+
+### 3. Payment Processing Testing
+
+#### 3.1 Cash Payment Testing
+
+- **Process 2 cash payments:**
+  - Admin marks appointment as completed
+  - Generate bill for completed appointment
+  - Record cash payment
+  - Verify receipt generation
+
+#### 3.2 Online Payment Testing
+
+- **Process 3 online payments:**
+
+  | Method | Transaction ID | Amount |
+  | ------ | -------------- | ------ |
+  | bKash  | BK7856943215   | 1200   |
+  | Nagad  | NG1209876543   | 2000   |
+  | Rocket | RK3245678901   | 500    |
+
+
+  - Customer submits online payment details
+  - Admin reviews and approves payment
+  - Verify status change to "approved"
+  - Check receipt generation and delivery
+
+### 4. Employee Workflow Testing
+
+#### 4.1 Employee Dashboard
+
+- Log in as each employee
+- Verify correct appointments are displayed
+- Test calendar view functionality
+- Test list view functionality
+
+#### 4.2 Appointment Management
+
+- Employee marks appointments as "completed"
+- Verify status change reflects in admin dashboard
+- Verify bill generation option becomes available
+
+### 5. Review & Rating Testing
+
+#### 5.1 Customer Reviews
+
+- Submit reviews for 3 completed appointments
+- Test different ratings (1-5 stars)
+- Add comments with the reviews
+
+#### 5.2 Review Display
+
+- Verify reviews appear on employee profiles
+- Check review summaries in admin dashboard
+- Test average rating calculations
+
+### 6. Reporting Testing
+
+#### 6.1 Admin Reports
+
+- Generate and verify accuracy of:
+  - Daily revenue report
+  - Service popularity report
+  - Employee performance report
+  - Payment method report
+
+#### 6.2 Data Export
+
+- Test CSV/PDF export functionality
+- Verify exported data matches dashboard information
+
+### 7. Notification System Testing
+
+#### 7.1 Email Notifications
+
+- Verify appointment confirmation emails
+- Test reminder emails (10min, 30min, day before)
+- Check payment confirmation emails
+- Verify receipt delivery emails
+
+---
+
+## Testing Checklist
+
+| Test Area                 | Status | Notes |
+| ------------------------- | ------ | ----- |
+| Admin login               |        |       |
+| Employee creation         |        |       |
+| Service creation          |        |       |
+| Customer registration     |        |       |
+| Appointment booking       |        |       |
+| Appointment rescheduling  |        |       |
+| Appointment cancellation  |        |       |
+| Cash payment processing   |        |       |
+| Online payment submission |        |       |
+| Payment verification      |        |       |
+| Employee dashboard        |        |       |
+| Service completion        |        |       |
+| Bill generation           |        |       |
+| Receipt delivery          |        |       |
+| Customer reviews          |        |       |
+| Reports generation        |        |       |
+| Email notifications       |        |       |
+
+## Test Accounts
+
+### Admin Account
+
+- **Email:** admin@labonno.com
+- **Password:** admin123
+
+### Test Customer Accounts
+
+- **Customer 1:** customer1@test.com / pass123
+- **Customer 2:** customer2@test.com / pass123
+- **Customer 3:** customer3@test.com / pass123
+
+### Employee Test Accounts
+
+- Use the employee emails created during testing with default password: employee123
+
 ## **Checklist Version (for SRS, use as a table or bullet points)**
 
 ---
