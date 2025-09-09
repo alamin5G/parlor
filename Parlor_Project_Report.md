@@ -1,4 +1,4 @@
-# Labonno Glamour World Parlor Management System
+# abonno Glamour World Parlor Management System
 
 ## University Project Report
 
@@ -1630,25 +1630,25 @@ The critical path includes requirements analysis → system design → core deve
 **Human Resources:**
 
 | Role                | Hours   | Rate/Hour | Total Cost  |
-| ------------------- | ------- | --------- | ----------- |
-| Senior Developer    | 120     | $50       | $6,000      |
-| Junior Developer    | 100     | $30       | $3,000      |
-| UI/UX Designer      | 40      | $40       | $1,600      |
-| Database Specialist | 30      | $45       | $1,350      |
-| Quality Assurance   | 25      | $35       | $875        |
-| Project Manager     | 35      | $60       | $2,100      |
+| ------------------- | ------- | --------- | ----------- | --- |
+| Senior Developer    | 120     | $50       | $6,000      |     |
+| Junior Developer    | 100     | $30       | $3,000      |     |
+| UI/UX Designer      | 40      | $40       | $1,600      |     |
+| Database Specialist | 30      | $45       | $1,350      |     |
+| Quality Assurance   | 25      | $35       | $875        |     |
+| Project Manager     | 35      | $60       | $2,100      |     |
 | **Total Labor**     | **350** |           | **$14,925** |
 
 **Infrastructure Costs (First Year):**
 
 | Component                | Monthly Cost | Annual Cost |
-| ------------------------ | ------------ | ----------- |
-| Web Hosting              | $50          | $600        |
-| Database Hosting         | $30          | $360        |
-| SSL Certificate          | $10          | $120        |
-| Email Service            | $20          | $240        |
-| SMS Service              | $15          | $180        |
-| Backup Storage           | $10          | $120        |
+| ------------------------ | ------------ | ----------- | --- |
+| Web Hosting              | $50          | $600        |     |
+| Database Hosting         | $30          | $360        |     |
+| SSL Certificate          | $10          | $120        |     |
+| Email Service            | $20          | $240        |     |
+| SMS Service              | $15          | $180        |     |
+| Backup Storage           | $10          | $120        |     |
 | Domain Registration      | -            | $15         |
 | **Total Infrastructure** |              | **$1,635**  |
 
@@ -1665,8 +1665,8 @@ The critical path includes requirements analysis → system design → core deve
 **Operational Costs (Annual):**
 
 | Component              | Cost       | Description                            |
-| ---------------------- | ---------- | -------------------------------------- |
-| Maintenance & Support  | $2,400     | 20 hours/month at $10/hour             |
+| ---------------------- | ---------- | -------------------------------------- | --- |
+| Maintenance & Support  | $2,400     | 20 hours/month at $10/hour             |     |
 | Security Updates       | $600       | Quarterly security patches and fixes   |
 | Performance Monitoring | $300       | Monitoring tools and services          |
 | Legal & Compliance     | $400       | Privacy policy, terms of service       |
@@ -2505,23 +2505,14 @@ These upcoming features represent a comprehensive roadmap for continued innovati
 ## References
 
 1. **Sommerville, I. (2016).** _Software Engineering_ (10th ed.). Pearson Education Limited.
-
 2. **Elmasri, R., & Navathe, S. B. (2017).** _Fundamentals of Database Systems_ (7th ed.). Pearson.
-
 3. **Fowler, M. (2002).** _Patterns of Enterprise Application Architecture_. Addison-Wesley Professional.
-
 4. **Freeman, E., Robson, E., Bates, B., & Sierra, K. (2020).** _Head First Design Patterns_ (2nd ed.). O'Reilly Media.
-
 5. **Krug, S. (2014).** _Don't Make Me Think: A Common Sense Approach to Web Usability_ (3rd ed.). New Riders.
-
 6. **Martin, R. C. (2017).** _Clean Architecture: A Craftsman's Guide to Software Structure and Design_. Prentice Hall.
-
 7. **PHP Documentation Team. (2023).** _PHP Manual_. Retrieved from https://www.php.net/manual/
-
 8. **MySQL Documentation Team. (2023).** _MySQL Reference Manual_. Retrieved from https://dev.mysql.com/doc/
-
 9. **Bootstrap Team. (2023).** _Bootstrap Documentation_. Retrieved from https://getbootstrap.com/docs/
-
 10. **OWASP Foundation. (2023).** _OWASP Top Ten_. Retrieved from https://owasp.org/www-project-top-ten/
 
 ---
