@@ -1,0 +1,158 @@
+-- Drop tables if they exist (for clean setup)
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS appointment_reminders;
+DROP TABLE IF EXISTS online_payments;
+DROP TABLE IF EXISTS reviews;
+DROP TABLE IF EXISTS bills;
+DROP TABLE IF EXISTS appointments;
+DROP TABLE IF EXISTS employee_services;
+DROP TABLE IF EXISTS services;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS receipts;
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- Create tables
+-- Users table - Stores all users including customers, admins, and beauticians
+CREATE TABLE users (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  name varchar(100) NOT NULL,
+  email varchar(100) NOT NULL UNIQUE,
+  password varchar(255) NOT NULL,
+  phone varchar(20) DEFAULT NULL,
+  role enum('customer','admin','beautician') NOT NULL,
+  is_verified tinyint(1) NOT NULL DEFAULT 0,
+  verify_token varchar(255) DEFAULT NULL,
+  profile_photo varchar(255) DEFAULT NULL,
+  is_active tinyint(1) NOT NULL DEFAULT 1,
+  created_at datetime DEFAULT CURRENT_TIMESTAMP,
+  profile_update_code varchar(16) DEFAULT NULL,
+  profile_update_code_expires_at datetime DEFAULT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Employees table - Links to users with role='beautician'
+CREATE TABLE employees (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  user_id int(11) NOT NULL,
+  specialization varchar(100) DEFAULT NULL,
+  hire_date date DEFAULT NULL,
+  status enum('active','inactive') DEFAULT 'active',
+  PRIMARY KEY (id),
+  KEY user_id (user_id),
+  CONSTRAINT employees_ibfk_1 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Services table - List of beauty services offered
+CREATE TABLE services (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  name varchar(100) NOT NULL,
+  description text DEFAULT NULL,
+  price decimal(10,2) NOT NULL,
+  duration_min int(11) NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Employee Services mapping table
+CREATE TABLE employee_services (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  employee_id int(11) NOT NULL,
+  service_id int(11) NOT NULL,
+  PRIMARY KEY (id),
+  KEY employee_id (employee_id),
+  KEY service_id (service_id),
+  CONSTRAINT employee_services_ibfk_1 FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE CASCADE,
+  CONSTRAINT employee_services_ibfk_2 FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Appointments table
+CREATE TABLE appointments (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  customer_id int(11) NOT NULL,
+  employee_id int(11) DEFAULT NULL,
+  service_id int(11) NOT NULL,
+  scheduled_at datetime NOT NULL,
+  status enum('pending_payment','booked','completed','cancelled','rescheduled') NOT NULL DEFAULT 'booked',
+  notes text DEFAULT NULL,
+  is_seen_by_employee tinyint(1) DEFAULT 0,
+  notified_10min tinyint(1) DEFAULT 0,
+  notified_30min tinyint(1) DEFAULT 0,
+  notified_daybefore tinyint(1) DEFAULT 0,
+  created_at datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY customer_id (customer_id),
+  KEY employee_id (employee_id),
+  KEY service_id (service_id),
+  CONSTRAINT appointments_ibfk_1 FOREIGN KEY (customer_id) REFERENCES users (id) ON DELETE CASCADE,
+  CONSTRAINT appointments_ibfk_2 FOREIGN KEY (employee_id) REFERENCES employees (id) ON DELETE SET NULL,
+  CONSTRAINT appointments_ibfk_3 FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Bills table - For in-store payments
+CREATE TABLE bills (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  appointment_id int(11) NOT NULL,
+  amount decimal(10,2) NOT NULL,
+  payment_mode enum('cash','bkash','nagad','rocket','card') NOT NULL DEFAULT 'cash',
+  payment_time datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY appointment_id (appointment_id),
+  CONSTRAINT bills_ibfk_1 FOREIGN KEY (appointment_id) REFERENCES appointments (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Online Payments table - For online payment transactions
+CREATE TABLE online_payments (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  appointment_id int(11) NOT NULL,
+  customer_id int(11) NOT NULL,
+  amount decimal(10,2) NOT NULL,
+  method enum('bkash','nagad','rocket') NOT NULL,
+  transaction_id varchar(64) NOT NULL,
+  status enum('pending','approved','rejected') DEFAULT 'pending',
+  notes text DEFAULT NULL,
+  submitted_at datetime DEFAULT CURRENT_TIMESTAMP,
+  created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY appointment_id (appointment_id),
+  KEY customer_id (customer_id),
+  CONSTRAINT online_payments_ibfk_1 FOREIGN KEY (appointment_id) REFERENCES appointments (id) ON DELETE CASCADE,
+  CONSTRAINT online_payments_ibfk_2 FOREIGN KEY (customer_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Reviews table - For customer feedback
+CREATE TABLE reviews (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  appointment_id int(11) NOT NULL,
+  customer_id int(11) NOT NULL,
+  rating int(11) NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comments text DEFAULT NULL,
+  created_at datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY appointment_id (appointment_id),
+  KEY customer_id (customer_id),
+  CONSTRAINT reviews_ibfk_1 FOREIGN KEY (appointment_id) REFERENCES appointments (id) ON DELETE CASCADE,
+  CONSTRAINT reviews_ibfk_2 FOREIGN KEY (customer_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Appointment Reminders table - For tracking notification status
+CREATE TABLE appointment_reminders (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  appointment_id int(11) NOT NULL,
+  status enum('sent','failed') DEFAULT 'sent',
+  reminder_type varchar(20) DEFAULT NULL,
+  sent_at datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY appointment_id (appointment_id),
+  CONSTRAINT appointment_reminders_ibfk_1 FOREIGN KEY (appointment_id) REFERENCES appointments (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Receipts table - For storing receipt information
+CREATE TABLE receipts (
+  id int(11) NOT NULL AUTO_INCREMENT,
+  bill_id int(11) NOT NULL,
+  file_path varchar(255) DEFAULT NULL,
+  issued_at datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY bill_id (bill_id),
+  CONSTRAINT receipts_ibfk_1 FOREIGN KEY (bill_id) REFERENCES bills (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
